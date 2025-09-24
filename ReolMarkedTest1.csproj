@@ -1,0 +1,42 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<!-- Output type som Windows Application -->
+		<OutputType>WinExe</OutputType>
+
+		<!-- Target framework - .NET 9.0 -->
+		<TargetFramework>net9.0-windows</TargetFramework>
+
+		<!-- Nullable reference types -->
+		<Nullable>enable</Nullable>
+
+		<!-- Implicit usings for cleaner code -->
+		<ImplicitUsings>enable</ImplicitUsings>
+
+		<!-- Aktiverer WPF support -->
+		<UseWPF>true</UseWPF>
+
+		<!-- Applikations info -->
+		<AssemblyTitle>Middelby ReolMarked</AssemblyTitle>
+		<Product>ReolMarked Administration System</Product>
+		<Description>WPF MVVM applikation til håndtering af reol udlejning</Description>
+		<Company>Middelby ReolMarked</Company>
+
+		<!-- Applikation ikon (hvis vi har en) -->
+		<!-- <ApplicationIcon>Images\icon.ico</ApplicationIcon> -->
+	</PropertyGroup>
+
+	<ItemGroup>
+		<!-- Opret Images mappe -->
+		<Folder Include="Images\" />
+	</ItemGroup>
+
+	<!-- Ingen ekstra pakker nødvendige for basic WPF MVVM -->
+	<!-- Hvis vi senere vil tilføje database support: -->
+	<!--
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="8.0.0" />
+  </ItemGroup>
+  -->
+
+</Project>
