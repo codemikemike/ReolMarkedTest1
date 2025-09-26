@@ -1,0 +1,390 @@
+﻿<Window x:Class="ReolMarkedTest1.MVVM.Views.ScannerWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Middelby Reolmarked - Scanner Kasse" 
+        Height="700" Width="900"
+        WindowStartupLocation="CenterScreen"
+        Background="#F5F5F5">
+
+    <Grid Margin="10">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <Border Grid.Row="0" Background="#2E5BBA" Margin="0,0,0,15">
+            <StackPanel Margin="20,15">
+                <TextBlock Text="Scanner Kasse" 
+                           FontSize="24" 
+                           FontWeight="Bold" 
+                           Foreground="White"/>
+                <TextBlock Text="Scan produkter og gennemfør betaling" 
+                           FontSize="14" 
+                           Foreground="LightBlue"/>
+            </StackPanel>
+        </Border>
+
+        <!-- Main Content -->
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="2*"/>
+                <ColumnDefinition Width="10"/>
+                <ColumnDefinition Width="1*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Venstre side - Scanning og produktliste -->
+            <Grid Grid.Column="0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <!-- Scanner input -->
+                <Border Grid.Row="0" 
+                        Background="White" 
+                        BorderBrush="#E0E0E0" 
+                        BorderThickness="1" 
+                        Margin="0,0,0,15"
+                        Visibility="{Binding IsScanningMode}">
+
+                    <StackPanel Margin="20">
+                        <TextBlock Text="Scanner Stregkode:" 
+                                   FontSize="16" 
+                                   FontWeight="SemiBold" 
+                                   Foreground="#333" 
+                                   Margin="0,0,0,10"/>
+
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="10"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+
+                            <TextBox Grid.Column="0"
+                                     Text="{Binding BarcodeInput, UpdateSourceTrigger=PropertyChanged}" 
+                                     Height="40" 
+                                     Padding="15,10"
+                                     FontSize="16"
+                                     BorderBrush="#E0E0E0"
+                                     KeyDown="BarcodeInput_KeyDown"/>
+
+                            <Button Grid.Column="2"
+                                    Content="Scanner"
+                                    Command="{Binding ScanBarcodeCommand}"
+                                    Background="#4CAF50"
+                                    Foreground="White"
+                                    Height="40"
+                                    Padding="20,0"
+                                    BorderThickness="0"
+                                    FontWeight="SemiBold"/>
+                        </Grid>
+
+                        <TextBlock Text="Scan stregkode eller indtast manuelt og tryk Enter" 
+                                   FontSize="12" 
+                                   Foreground="#666" 
+                                   Margin="0,5,0,0"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- Produktliste -->
+                <Border Grid.Row="1" 
+                        Background="White" 
+                        BorderBrush="#E0E0E0" 
+                        BorderThickness="1"
+                        Margin="0,0,0,15">
+
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+
+                        <Border Grid.Row="0" Background="#F8F9FA" Padding="20,15">
+                            <TextBlock Text="{Binding ProductCount, StringFormat='Scannede Produkter ({0})'}" 
+                                       FontSize="18" 
+                                       FontWeight="SemiBold" 
+                                       Foreground="#333"/>
+                        </Border>
+
+                        <ListBox Grid.Row="1" 
+                                 ItemsSource="{Binding ScannedProducts}"
+                                 Background="Transparent"
+                                 BorderThickness="0"
+                                 Margin="15">
+
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Background="White" 
+                                            BorderBrush="#E0E0E0" 
+                                            BorderThickness="1" 
+                                            Margin="0,5" 
+                                            Padding="15">
+
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+
+                                            <StackPanel Grid.Column="0">
+                                                <TextBlock Text="{Binding ProductName}" 
+                                                           FontWeight="SemiBold" 
+                                                           FontSize="14"/>
+                                                <TextBlock Text="{Binding BarCode}" 
+                                                           FontSize="11" 
+                                                           Foreground="#666"/>
+                                                <TextBlock Text="{Binding RackNumber, StringFormat='Reol {0}'}" 
+                                                           FontSize="11" 
+                                                           Foreground="#999"/>
+                                            </StackPanel>
+
+                                            <TextBlock Grid.Column="1"
+                                                       Text="{Binding LinjeTotalFormatted}" 
+                                                       FontSize="16" 
+                                                       FontWeight="Bold"
+                                                       Foreground="#2E5BBA"
+                                                       VerticalAlignment="Center"
+                                                       Margin="0,0,15,0"/>
+
+                                            <Button Grid.Column="2"
+                                                    Content="Fjern"
+                                                    Command="{Binding DataContext.RemoveProductCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                    CommandParameter="{Binding}"
+                                                    Background="#F44336"
+                                                    Foreground="White"
+                                                    Padding="10,5"
+                                                    BorderThickness="0"
+                                                    FontSize="12"
+                                                    VerticalAlignment="Center"/>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+
+                        <TextBlock Grid.Row="1"
+                                   Text="Ingen produkter scannet endnu"
+                                   FontSize="16"
+                                   Foreground="#999"
+                                   FontStyle="Italic"
+                                   HorizontalAlignment="Center"
+                                   VerticalAlignment="Center">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding HasProducts}" Value="False">
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                    </Grid>
+                </Border>
+
+                <!-- Total og handlingsknapper -->
+                <Border Grid.Row="2" 
+                        Background="White" 
+                        BorderBrush="#E0E0E0" 
+                        BorderThickness="1">
+
+                    <StackPanel Margin="20">
+                        <!-- Total -->
+                        <Grid Margin="0,0,0,15">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+
+                            <TextBlock Grid.Column="0"
+                                       Text="TOTAL:" 
+                                       FontSize="24" 
+                                       FontWeight="Bold" 
+                                       Foreground="#333"
+                                       VerticalAlignment="Center"/>
+
+                            <TextBlock Grid.Column="1"
+                                       Text="{Binding TotalAmountFormatted}" 
+                                       FontSize="32" 
+                                       FontWeight="Bold" 
+                                       Foreground="#2E5BBA"/>
+                        </Grid>
+
+                        <!-- Handlingsknapper -->
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                            <Button Content="Annuller Salg" 
+                                    Command="{Binding CancelSaleCommand}"
+                                    Background="#F44336" 
+                                    Foreground="White" 
+                                    Padding="15,10"
+                                    Margin="5,0"
+                                    BorderThickness="0"/>
+
+                            <Button Content="Gå til Betaling" 
+                                    Command="{Binding ProceedToPaymentCommand}"
+                                    Background="#FF9800" 
+                                    Foreground="White" 
+                                    Padding="20,10"
+                                    Margin="5,0"
+                                    BorderThickness="0"
+                                    FontWeight="SemiBold"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+            </Grid>
+
+            <!-- Splitter -->
+            <GridSplitter Grid.Column="1" 
+                          Width="2" 
+                          Background="#E0E0E0" 
+                          HorizontalAlignment="Stretch"/>
+
+            <!-- Højre side - Betaling -->
+            <Grid Grid.Column="2">
+                <Border Background="White" 
+                        BorderBrush="#E0E0E0" 
+                        BorderThickness="1"
+                        Visibility="{Binding IsPaymentMode}">
+
+                    <StackPanel Margin="20">
+                        <TextBlock Text="Betaling" 
+                                   FontSize="20" 
+                                   FontWeight="Bold" 
+                                   Foreground="#333" 
+                                   Margin="0,0,0,20"/>
+
+                        <!-- Total -->
+                        <Grid Margin="0,0,0,20">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+
+                            <TextBlock Grid.Column="0" Text="Total:" FontSize="14" Foreground="#666"/>
+                            <TextBlock Grid.Column="1" Text="{Binding TotalAmountFormatted}" FontSize="14" FontWeight="SemiBold"/>
+                        </Grid>
+
+                        <!-- Betalingsform -->
+                        <TextBlock Text="Betalingsform:" 
+                                   FontSize="14" 
+                                   Foreground="#666" 
+                                   Margin="0,0,0,5"/>
+
+                        <ComboBox SelectedValue="{Binding PaymentMethod}" 
+                                  Height="35"
+                                  Margin="0,0,0,20">
+                            <ComboBoxItem Content="Kontant"/>
+                            <ComboBoxItem Content="MobilePay"/>
+                        </ComboBox>
+
+                        <!-- Betalt beløb -->
+                        <TextBlock Text="Betalt beløb:" 
+                                   FontSize="14" 
+                                   Foreground="#666" 
+                                   Margin="0,0,0,5"/>
+
+                        <TextBox Text="{Binding PaidAmount, UpdateSourceTrigger=PropertyChanged}" 
+                                 Height="35" 
+                                 Padding="10,5"
+                                 FontSize="14"
+                                 BorderBrush="#E0E0E0"
+                                 Margin="0,0,0,20"/>
+
+                        <!-- Byttepenge -->
+                        <Grid Margin="0,0,0,30">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+
+                            <TextBlock Grid.Column="0" 
+                                       Text="Byttepenge:" 
+                                       FontSize="16" 
+                                       FontWeight="SemiBold"
+                                       Foreground="#333"/>
+                            <TextBlock Grid.Column="1" 
+                                       Text="{Binding ChangeAmountFormatted}" 
+                                       FontSize="18" 
+                                       FontWeight="Bold"
+                                       Foreground="#4CAF50"/>
+                        </Grid>
+
+                        <!-- Gennemfør betaling -->
+                        <Button Content="Gennemfør Betaling" 
+                                Command="{Binding CompletePaymentCommand}"
+                                Background="#4CAF50" 
+                                Foreground="White" 
+                                Height="50"
+                                BorderThickness="0" 
+                                FontSize="16"
+                                FontWeight="Bold"
+                                Margin="0,0,0,15"/>
+
+                        <!-- Tilbage til scanning -->
+                        <Button Content="Tilbage til Scanning" 
+                                Command="{Binding StartNewSaleCommand}"
+                                Background="#666" 
+                                Foreground="White" 
+                                Height="35"
+                                BorderThickness="0"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- Placeholder når ikke i betalings mode -->
+                <TextBlock Text="Scan produkter for at starte betaling"
+                           FontSize="14"
+                           Foreground="#999"
+                           FontStyle="Italic"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center"
+                           TextWrapping="Wrap"
+                           TextAlignment="Center">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsPaymentMode}" Value="False">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+            </Grid>
+        </Grid>
+
+        <!-- Footer - Status -->
+        <Border Grid.Row="2" 
+                Background="#37474F" 
+                Margin="0,15,0,0"
+                Padding="20,10">
+
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <TextBlock Grid.Column="0"
+                           Text="{Binding StatusMessage}" 
+                           FontSize="14" 
+                           Foreground="White" 
+                           VerticalAlignment="Center"/>
+
+                <Button Grid.Column="1"
+                        Content="Luk Scanner"
+                        Click="CloseButton_Click"
+                        Background="#666"
+                        Foreground="White"
+                        Padding="15,5"
+                        BorderThickness="0"/>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>

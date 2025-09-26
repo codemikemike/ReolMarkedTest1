@@ -68,7 +68,7 @@
                     <Button
                         Margin="5,0"
                         Padding="15,8"
-                        Background="#9C27B0"
+                        Background="#03A9F4"
                         BorderThickness="0"
                         Command="{Binding ShowNeighborRacksCommand}"
                         Content="Vis Nabo-Reoler"
@@ -83,6 +83,25 @@
                         BorderThickness="0"
                         Click="OpenBarcodeWindow_Click"
                         Content="Opret Stregkoder"
+                        Foreground="White" />
+
+                    <!--  NY - UC3.1 knap - seperat window  -->
+                    <Button
+                        Margin="5,0"
+                        Padding="15,8"
+                        Background="#E91E63"
+                        BorderThickness="0"
+                        Click="OpenScannerWindow_Click"
+                        Content="Åbn Scanner Kasse"
+                        Foreground="White" />
+                    <!--  NY - UC4.1 knap - seperat window  -->
+                    <Button
+                        Margin="5,0"
+                        Padding="15,8"
+                        Background="#795548"
+                        BorderThickness="0"
+                        Click="OpenFakturaWindow_Click"
+                        Content="Månedlig Afregning"
                         Foreground="White" />
                 </StackPanel>
             </Grid>
