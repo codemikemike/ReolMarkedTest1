@@ -209,5 +209,31 @@ namespace ReolMarked.MVVM.Repositories
 
             return count;
         }
+
+        /// <summary>
+        /// Finder ledige reoler ved siden af en given reol (til UC2)
+        /// Nabo-reoler er reol nummer +1 eller -1 fra den givne reol
+        /// Som Peter ville få vist reol 6 (ved siden af 7) og 43 (ved siden af 42)
+        /// </summary>
+        public ObservableCollection<Rack> GetAvailableNeighborRacks(int rackNumber)
+        {
+            var neighborRacks = new List<Rack>();
+
+            // Tjek reol til venstre (rackNumber - 1)
+            var leftNeighbor = GetRackByNumber(rackNumber - 1);
+            if (leftNeighbor != null && leftNeighbor.IsAvailable)
+            {
+                neighborRacks.Add(leftNeighbor);
+            }
+
+            // Tjek reol til højre (rackNumber + 1)
+            var rightNeighbor = GetRackByNumber(rackNumber + 1);
+            if (rightNeighbor != null && rightNeighbor.IsAvailable)
+            {
+                neighborRacks.Add(rightNeighbor);
+            }
+
+            return new ObservableCollection<Rack>(neighborRacks);
+        }
     }
 }
