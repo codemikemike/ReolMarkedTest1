@@ -1,114 +1,150 @@
-﻿<Window x:Class="ReolMarked.MVVM.Views.MainWindow"
-        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Middelby Reolmarked - Reol Administration" 
-        Height="900" Width="1400"
-        WindowStartupLocation="CenterScreen"
-        Background="#F5F5F5">
+﻿<Window
+    x:Class="ReolMarked.MVVM.Views.MainWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Title="Middelby Reolmarked - Reol Administration"
+    Width="1400"
+    Height="900"
+    Background="#F5F5F5"
+    WindowStartupLocation="CenterScreen">
 
-    <!-- Main Grid Layout -->
+    <!--  Main Grid Layout  -->
     <Grid Margin="10">
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
-            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <!-- Header område -->
-        <Border Grid.Row="0" Background="#2E5BBA" Margin="0,0,0,10">
+        <!--  Header område  -->
+        <Border
+            Grid.Row="0"
+            Margin="0,0,0,10"
+            Background="#2E5BBA">
             <Grid>
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
 
-                <StackPanel Grid.Column="0" Orientation="Vertical" Margin="20,15">
-                    <TextBlock Text="Middelby Reolmarked" 
-                               FontSize="24" 
-                               FontWeight="Bold" 
-                               Foreground="White"/>
-                    <TextBlock Text="Reol Administration System - UC1 &amp; UC2" 
-                               FontSize="14" 
-                               Foreground="LightBlue"/>
+                <StackPanel
+                    Grid.Column="0"
+                    Margin="20,15"
+                    Orientation="Vertical">
+                    <TextBlock
+                        FontSize="24"
+                        FontWeight="Bold"
+                        Foreground="White"
+                        Text="Middelby Reolmarked" />
+                    <TextBlock
+                        FontSize="14"
+                        Foreground="LightBlue"
+                        Text="Reol Administration System - UC1 &amp; UC2" />
                 </StackPanel>
 
-                <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="20,15">
-                    <Button Content="Vis Alle Ledige Reoler" 
-                            Command="{Binding ShowAvailableRacksCommand}"
-                            Background="#4CAF50" 
-                            Foreground="White" 
-                            Padding="15,8" 
-                            Margin="5,0"
-                            BorderThickness="0"/>
+                <StackPanel
+                    Grid.Column="1"
+                    Margin="20,15"
+                    Orientation="Horizontal">
+                    <Button
+                        Margin="5,0"
+                        Padding="15,8"
+                        Background="#4CAF50"
+                        BorderThickness="0"
+                        Command="{Binding ShowAvailableRacksCommand}"
+                        Content="Vis Alle Ledige Reoler"
+                        Foreground="White" />
 
-                    <Button Content="Kun Reoler Uden Bøjlestang" 
-                            Command="{Binding ShowRacksWithoutHangerBarCommand}"
-                            Background="#FF9800" 
-                            Foreground="White" 
-                            Padding="15,8" 
-                            Margin="5,0"
-                            BorderThickness="0"/>
+                    <Button
+                        Margin="5,0"
+                        Padding="15,8"
+                        Background="#FF9800"
+                        BorderThickness="0"
+                        Command="{Binding ShowRacksWithoutHangerBarCommand}"
+                        Content="Kun Reoler Uden Bøjlestang"
+                        Foreground="White" />
 
-                    <!-- NYT - UC2 knap -->
-                    <Button Content="Vis Nabo-Reoler" 
-                            Command="{Binding ShowNeighborRacksCommand}"
-                            Background="#9C27B0" 
-                            Foreground="White" 
-                            Padding="15,8" 
-                            Margin="5,0"
-                            BorderThickness="0"
-                            IsEnabled="{Binding IsCustomerSelected}"/>
+                    <!--  NYT - UC2 knap  -->
+                    <Button
+                        Margin="5,0"
+                        Padding="15,8"
+                        Background="#9C27B0"
+                        BorderThickness="0"
+                        Command="{Binding ShowNeighborRacksCommand}"
+                        Content="Vis Nabo-Reoler"
+                        Foreground="White"
+                        IsEnabled="{Binding IsCustomerSelected}" />
+
+                    <!--  Knap til seperat window for BARCODE - stregkode  -->
+                    <Button
+                        Margin="5,0"
+                        Padding="15,8"
+                        Background="#9C27B0"
+                        BorderThickness="0"
+                        Click="OpenBarcodeWindow_Click"
+                        Content="Opret Stregkoder"
+                        Foreground="White" />
                 </StackPanel>
             </Grid>
         </Border>
 
-        <!-- Main Content -->
+        <!--  Main Content  -->
         <Grid Grid.Row="1">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="2*"/>
-                <ColumnDefinition Width="10"/>
-                <ColumnDefinition Width="1*"/>
+                <ColumnDefinition Width="2*" />
+                <ColumnDefinition Width="10" />
+                <ColumnDefinition Width="1*" />
             </Grid.ColumnDefinitions>
 
-            <!-- Venstre side - Reol oversigt -->
-            <Border Grid.Column="0" Background="White" BorderBrush="#E0E0E0" BorderThickness="1">
+            <!--  Venstre side - Reol oversigt  -->
+            <Border
+                Grid.Column="0"
+                Background="White"
+                BorderBrush="#E0E0E0"
+                BorderThickness="1">
                 <Grid>
                     <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
                     </Grid.RowDefinitions>
 
-                    <!-- Reol liste header -->
-                    <Border Grid.Row="0" Background="#F8F9FA" Padding="15,10">
-                        <TextBlock Text="Ledige Reoler" 
-                                   FontSize="18" 
-                                   FontWeight="SemiBold" 
-                                   Foreground="#333"/>
+                    <!--  Reol liste header  -->
+                    <Border
+                        Grid.Row="0"
+                        Padding="15,10"
+                        Background="#F8F9FA">
+                        <TextBlock
+                            FontSize="18"
+                            FontWeight="SemiBold"
+                            Foreground="#333"
+                            Text="Ledige Reoler" />
                     </Border>
 
-                    <!-- Reol liste -->
-                    <ListBox Grid.Row="1" 
-                             ItemsSource="{Binding AvailableRacks}"
-                             SelectedItem="{Binding SelectedRack}"
-                             Background="Transparent"
-                             BorderThickness="0"
-                             Margin="10">
+                    <!--  Reol liste  -->
+                    <ListBox
+                        Grid.Row="1"
+                        Margin="10"
+                        Background="Transparent"
+                        BorderThickness="0"
+                        ItemsSource="{Binding AvailableRacks}"
+                        SelectedItem="{Binding SelectedRack}">
 
                         <ListBox.ItemTemplate>
                             <DataTemplate>
-                                <Border Background="White" 
-                                        BorderBrush="#E0E0E0" 
-                                        BorderThickness="1" 
-                                        Margin="5" 
-                                        Padding="15">
+                                <Border
+                                    Margin="5"
+                                    Padding="15"
+                                    Background="White"
+                                    BorderBrush="#E0E0E0"
+                                    BorderThickness="1">
 
                                     <Border.Style>
                                         <Style TargetType="Border">
                                             <Style.Triggers>
                                                 <DataTrigger Binding="{Binding IsSelected, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" Value="True">
-                                                    <Setter Property="Background" Value="#E3F2FD"/>
-                                                    <Setter Property="BorderBrush" Value="#2196F3"/>
-                                                    <Setter Property="BorderThickness" Value="2"/>
+                                                    <Setter Property="Background" Value="#E3F2FD" />
+                                                    <Setter Property="BorderBrush" Value="#2196F3" />
+                                                    <Setter Property="BorderThickness" Value="2" />
                                                 </DataTrigger>
                                             </Style.Triggers>
                                         </Style>
@@ -116,50 +152,60 @@
 
                                     <Grid>
                                         <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="Auto"/>
-                                            <ColumnDefinition Width="*"/>
-                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
                                         </Grid.ColumnDefinitions>
 
-                                        <!-- Reol nummer (stor) -->
-                                        <Border Grid.Column="0" 
-                                                Background="#2E5BBA" 
-                                                Width="50" 
-                                                Height="50" 
-                                                VerticalAlignment="Center">
-                                            <TextBlock Text="{Binding RackNumber}" 
-                                                       FontSize="20" 
-                                                       FontWeight="Bold" 
-                                                       Foreground="White" 
-                                                       HorizontalAlignment="Center" 
-                                                       VerticalAlignment="Center"/>
+                                        <!--  Reol nummer (stor)  -->
+                                        <Border
+                                            Grid.Column="0"
+                                            Width="50"
+                                            Height="50"
+                                            VerticalAlignment="Center"
+                                            Background="#2E5BBA">
+                                            <TextBlock
+                                                HorizontalAlignment="Center"
+                                                VerticalAlignment="Center"
+                                                FontSize="20"
+                                                FontWeight="Bold"
+                                                Foreground="White"
+                                                Text="{Binding RackNumber}" />
                                         </Border>
 
-                                        <!-- Reol info -->
-                                        <StackPanel Grid.Column="1" Margin="15,0,10,0" VerticalAlignment="Center">
-                                            <TextBlock Text="{Binding RackType}" 
-                                                       FontSize="14" 
-                                                       FontWeight="SemiBold" 
-                                                       Foreground="#333"/>
-                                            <TextBlock Text="{Binding Location}" 
-                                                       FontSize="12" 
-                                                       Foreground="#666" 
-                                                       Margin="0,2,0,0"/>
-                                            <TextBlock Text="{Binding Description}" 
-                                                       FontSize="11" 
-                                                       Foreground="#999" 
-                                                       Margin="0,2,0,0"/>
+                                        <!--  Reol info  -->
+                                        <StackPanel
+                                            Grid.Column="1"
+                                            Margin="15,0,10,0"
+                                            VerticalAlignment="Center">
+                                            <TextBlock
+                                                FontSize="14"
+                                                FontWeight="SemiBold"
+                                                Foreground="#333"
+                                                Text="{Binding RackType}" />
+                                            <TextBlock
+                                                Margin="0,2,0,0"
+                                                FontSize="12"
+                                                Foreground="#666"
+                                                Text="{Binding Location}" />
+                                            <TextBlock
+                                                Margin="0,2,0,0"
+                                                FontSize="11"
+                                                Foreground="#999"
+                                                Text="{Binding Description}" />
                                         </StackPanel>
 
-                                        <!-- Status -->
-                                        <Border Grid.Column="2" 
-                                                Background="#4CAF50" 
-                                                Padding="8,4" 
-                                                VerticalAlignment="Center">
-                                            <TextBlock Text="{Binding StatusText}" 
-                                                       FontSize="10" 
-                                                       FontWeight="Bold" 
-                                                       Foreground="White"/>
+                                        <!--  Status  -->
+                                        <Border
+                                            Grid.Column="2"
+                                            Padding="8,4"
+                                            VerticalAlignment="Center"
+                                            Background="#4CAF50">
+                                            <TextBlock
+                                                FontSize="10"
+                                                FontWeight="Bold"
+                                                Foreground="White"
+                                                Text="{Binding StatusText}" />
                                         </Border>
                                     </Grid>
                                 </Border>
@@ -169,65 +215,72 @@
                 </Grid>
             </Border>
 
-            <!-- Splitter -->
-            <GridSplitter Grid.Column="1" 
-                          Width="2" 
-                          Background="#E0E0E0" 
-                          HorizontalAlignment="Stretch"/>
+            <!--  Splitter  -->
+            <GridSplitter
+                Grid.Column="1"
+                Width="2"
+                HorizontalAlignment="Stretch"
+                Background="#E0E0E0" />
 
-            <!-- Højre side - Kunde håndtering -->
+            <!--  Højre side - Kunde håndtering  -->
             <Grid Grid.Column="2">
                 <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                    <!-- NYT - Kundens reoler -->
-                    <RowDefinition Height="Auto"/>
-                    <!-- NYT - Nabo-reoler -->
-                    <RowDefinition Height="*"/>
-                    <!-- Ny kunde formular -->
-                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <!--  NYT - Kundens reoler  -->
+                    <RowDefinition Height="Auto" />
+                    <!--  NYT - Nabo-reoler  -->
+                    <RowDefinition Height="*" />
+                    <!--  Ny kunde formular  -->
+                    <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
 
-                <!-- Valgt reol info -->
-                <Border Grid.Row="0" 
-                        Background="White" 
-                        BorderBrush="#E0E0E0" 
-                        BorderThickness="1" 
-                        Margin="0,0,0,10">
+                <!--  Valgt reol info  -->
+                <Border
+                    Grid.Row="0"
+                    Margin="0,0,0,10"
+                    Background="White"
+                    BorderBrush="#E0E0E0"
+                    BorderThickness="1">
 
                     <StackPanel Margin="15">
-                        <TextBlock Text="Valgt Reol:" 
-                                   FontSize="14" 
-                                   FontWeight="SemiBold" 
-                                   Foreground="#333" 
-                                   Margin="0,0,0,5"/>
+                        <TextBlock
+                            Margin="0,0,0,5"
+                            FontSize="14"
+                            FontWeight="SemiBold"
+                            Foreground="#333"
+                            Text="Valgt Reol:" />
 
-                        <TextBlock Text="{Binding SelectedRack.RackNumber, StringFormat='Reol nummer: {0}'}" 
-                                   FontSize="12" 
-                                   Foreground="#666"
-                                   Visibility="{Binding IsRackSelected}"/>
+                        <TextBlock
+                            FontSize="12"
+                            Foreground="#666"
+                            Text="{Binding SelectedRack.RackNumber, StringFormat='Reol nummer: {0}'}"
+                            Visibility="{Binding IsRackSelected}" />
 
-                        <TextBlock Text="{Binding SelectedRack.RackType}" 
-                                   FontSize="12" 
-                                   Foreground="#666"
-                                   Visibility="{Binding IsRackSelected}"/>
+                        <TextBlock
+                            FontSize="12"
+                            Foreground="#666"
+                            Text="{Binding SelectedRack.RackType}"
+                            Visibility="{Binding IsRackSelected}" />
 
-                        <TextBlock Text="{Binding SelectedRack.Location}" 
-                                   FontSize="12" 
-                                   Foreground="#666"
-                                   Visibility="{Binding IsRackSelected}"/>
+                        <TextBlock
+                            FontSize="12"
+                            Foreground="#666"
+                            Text="{Binding SelectedRack.Location}"
+                            Visibility="{Binding IsRackSelected}" />
 
-                        <TextBlock Text="Ingen reol valgt" 
-                                   FontSize="12" 
-                                   Foreground="#999"
-                                   FontStyle="Italic">
+                        <TextBlock
+                            FontSize="12"
+                            FontStyle="Italic"
+                            Foreground="#999"
+                            Text="Ingen reol valgt">
                             <TextBlock.Style>
                                 <Style TargetType="TextBlock">
-                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                    <Setter Property="Visibility" Value="Collapsed" />
                                     <Style.Triggers>
                                         <DataTrigger Binding="{Binding IsRackSelected}" Value="False">
-                                            <Setter Property="Visibility" Value="Visible"/>
+                                            <Setter Property="Visibility" Value="Visible" />
                                         </DataTrigger>
                                     </Style.Triggers>
                                 </Style>
@@ -236,53 +289,59 @@
                     </StackPanel>
                 </Border>
 
-                <!-- Kunde valg -->
-                <Border Grid.Row="1" 
-                        Background="White" 
-                        BorderBrush="#E0E0E0" 
-                        BorderThickness="1" 
-                        Margin="0,0,0,10">
+                <!--  Kunde valg  -->
+                <Border
+                    Grid.Row="1"
+                    Margin="0,0,0,10"
+                    Background="White"
+                    BorderBrush="#E0E0E0"
+                    BorderThickness="1">
 
                     <StackPanel Margin="15">
-                        <TextBlock Text="Vælg Eksisterende Kunde:" 
-                                   FontSize="14" 
-                                   FontWeight="SemiBold" 
-                                   Foreground="#333" 
-                                   Margin="0,0,0,5"/>
+                        <TextBlock
+                            Margin="0,0,0,5"
+                            FontSize="14"
+                            FontWeight="SemiBold"
+                            Foreground="#333"
+                            Text="Vælg Eksisterende Kunde:" />
 
-                        <ComboBox ItemsSource="{Binding Customers}"
-                                  SelectedItem="{Binding SelectedCustomer}"
-                                  DisplayMemberPath="DisplayText"
-                                  Height="30"
-                                  Margin="0,5"/>
+                        <ComboBox
+                            Height="30"
+                            Margin="0,5"
+                            DisplayMemberPath="DisplayText"
+                            ItemsSource="{Binding Customers}"
+                            SelectedItem="{Binding SelectedCustomer}" />
                     </StackPanel>
                 </Border>
 
-                <!-- NYT - UC2: Kundens eksisterende reoler -->
-                <Border Grid.Row="2" 
-                        Background="White" 
-                        BorderBrush="#E0E0E0" 
-                        BorderThickness="1" 
-                        Margin="0,0,0,10">
+                <!--  NYT - UC2: Kundens eksisterende reoler  -->
+                <Border
+                    Grid.Row="2"
+                    Margin="0,0,0,10"
+                    Background="White"
+                    BorderBrush="#E0E0E0"
+                    BorderThickness="1">
 
                     <StackPanel Margin="15">
-                        <TextBlock Text="Kundens Nuværende Reoler:" 
-                                   FontSize="14" 
-                                   FontWeight="SemiBold" 
-                                   Foreground="#333" 
-                                   Margin="0,0,0,5"/>
+                        <TextBlock
+                            Margin="0,0,0,5"
+                            FontSize="14"
+                            FontWeight="SemiBold"
+                            Foreground="#333"
+                            Text="Kundens Nuværende Reoler:" />
 
-                        <ListBox ItemsSource="{Binding CustomerRacks}"
-                                 SelectedItem="{Binding SelectedCustomerRack}"
-                                 Height="100"
-                                 Background="Transparent"
-                                 BorderThickness="0">
+                        <ListBox
+                            Height="100"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            ItemsSource="{Binding CustomerRacks}"
+                            SelectedItem="{Binding SelectedCustomerRack}">
 
                             <ListBox.Style>
                                 <Style TargetType="ListBox">
                                     <Style.Triggers>
                                         <DataTrigger Binding="{Binding CustomerRacks.Count}" Value="0">
-                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                            <Setter Property="Visibility" Value="Collapsed" />
                                         </DataTrigger>
                                     </Style.Triggers>
                                 </Style>
@@ -290,36 +349,40 @@
 
                             <ListBox.ItemTemplate>
                                 <DataTemplate>
-                                    <Border Background="#F0F8FF" 
-                                            BorderBrush="#4169E1" 
-                                            BorderThickness="1" 
-                                            Margin="2" 
-                                            Padding="8,4">
+                                    <Border
+                                        Margin="2"
+                                        Padding="8,4"
+                                        Background="#F0F8FF"
+                                        BorderBrush="#4169E1"
+                                        BorderThickness="1">
 
                                         <StackPanel Orientation="Horizontal">
-                                            <TextBlock Text="{Binding RackNumber, StringFormat='Reol {0}'}" 
-                                                       FontWeight="SemiBold" 
-                                                       FontSize="12"/>
-                                            <TextBlock Text="{Binding Location}" 
-                                                       FontSize="10" 
-                                                       Foreground="#666" 
-                                                       Margin="10,0,0,0"/>
+                                            <TextBlock
+                                                FontSize="12"
+                                                FontWeight="SemiBold"
+                                                Text="{Binding RackNumber, StringFormat='Reol {0}'}" />
+                                            <TextBlock
+                                                Margin="10,0,0,0"
+                                                FontSize="10"
+                                                Foreground="#666"
+                                                Text="{Binding Location}" />
                                         </StackPanel>
                                     </Border>
                                 </DataTemplate>
                             </ListBox.ItemTemplate>
                         </ListBox>
 
-                        <TextBlock Text="Kunden har ingen reoler endnu" 
-                                   FontSize="12" 
-                                   Foreground="#999"
-                                   FontStyle="Italic">
+                        <TextBlock
+                            FontSize="12"
+                            FontStyle="Italic"
+                            Foreground="#999"
+                            Text="Kunden har ingen reoler endnu">
                             <TextBlock.Style>
                                 <Style TargetType="TextBlock">
-                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                    <Setter Property="Visibility" Value="Collapsed" />
                                     <Style.Triggers>
                                         <DataTrigger Binding="{Binding CustomerRacks.Count}" Value="0">
-                                            <Setter Property="Visibility" Value="Visible"/>
+                                            <Setter Property="Visibility" Value="Visible" />
                                         </DataTrigger>
                                     </Style.Triggers>
                                 </Style>
@@ -328,30 +391,33 @@
                     </StackPanel>
                 </Border>
 
-                <!-- NYT - UC2: Nabo-reoler -->
-                <Border Grid.Row="3" 
-                        Background="White" 
-                        BorderBrush="#E0E0E0" 
-                        BorderThickness="1" 
-                        Margin="0,0,0,10">
+                <!--  NYT - UC2: Nabo-reoler  -->
+                <Border
+                    Grid.Row="3"
+                    Margin="0,0,0,10"
+                    Background="White"
+                    BorderBrush="#E0E0E0"
+                    BorderThickness="1">
 
                     <StackPanel Margin="15">
-                        <TextBlock Text="Ledige Nabo-Reoler:" 
-                                   FontSize="14" 
-                                   FontWeight="SemiBold" 
-                                   Foreground="#333" 
-                                   Margin="0,0,0,5"/>
+                        <TextBlock
+                            Margin="0,0,0,5"
+                            FontSize="14"
+                            FontWeight="SemiBold"
+                            Foreground="#333"
+                            Text="Ledige Nabo-Reoler:" />
 
-                        <ListBox ItemsSource="{Binding NeighborRacks}"
-                                 Height="80"
-                                 Background="Transparent"
-                                 BorderThickness="0">
+                        <ListBox
+                            Height="80"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            ItemsSource="{Binding NeighborRacks}">
 
                             <ListBox.Style>
                                 <Style TargetType="ListBox">
                                     <Style.Triggers>
                                         <DataTrigger Binding="{Binding NeighborRacks.Count}" Value="0">
-                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                            <Setter Property="Visibility" Value="Collapsed" />
                                         </DataTrigger>
                                     </Style.Triggers>
                                 </Style>
@@ -359,37 +425,41 @@
 
                             <ListBox.ItemTemplate>
                                 <DataTemplate>
-                                    <Border Background="#E8F5E8" 
-                                            BorderBrush="#4CAF50" 
-                                            BorderThickness="1" 
-                                            Margin="2" 
-                                            Padding="8,4">
+                                    <Border
+                                        Margin="2"
+                                        Padding="8,4"
+                                        Background="#E8F5E8"
+                                        BorderBrush="#4CAF50"
+                                        BorderThickness="1">
 
                                         <StackPanel Orientation="Horizontal">
-                                            <TextBlock Text="{Binding RackNumber, StringFormat='Reol {0}'}" 
-                                                       FontWeight="SemiBold" 
-                                                       FontSize="12"/>
-                                            <TextBlock Text="LEDIG" 
-                                                       FontSize="10" 
-                                                       Foreground="#4CAF50" 
-                                                       FontWeight="Bold"
-                                                       Margin="10,0,0,0"/>
+                                            <TextBlock
+                                                FontSize="12"
+                                                FontWeight="SemiBold"
+                                                Text="{Binding RackNumber, StringFormat='Reol {0}'}" />
+                                            <TextBlock
+                                                Margin="10,0,0,0"
+                                                FontSize="10"
+                                                FontWeight="Bold"
+                                                Foreground="#4CAF50"
+                                                Text="LEDIG" />
                                         </StackPanel>
                                     </Border>
                                 </DataTemplate>
                             </ListBox.ItemTemplate>
                         </ListBox>
 
-                        <TextBlock Text="Ingen nabo-reoler til rådighed" 
-                                   FontSize="12" 
-                                   Foreground="#999"
-                                   FontStyle="Italic">
+                        <TextBlock
+                            FontSize="12"
+                            FontStyle="Italic"
+                            Foreground="#999"
+                            Text="Ingen nabo-reoler til rådighed">
                             <TextBlock.Style>
                                 <Style TargetType="TextBlock">
-                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                    <Setter Property="Visibility" Value="Collapsed" />
                                     <Style.Triggers>
                                         <DataTrigger Binding="{Binding NeighborRacks.Count}" Value="0">
-                                            <Setter Property="Visibility" Value="Visible"/>
+                                            <Setter Property="Visibility" Value="Visible" />
                                         </DataTrigger>
                                     </Style.Triggers>
                                 </Style>
@@ -398,113 +468,128 @@
                     </StackPanel>
                 </Border>
 
-                <!-- Ny kunde formular -->
-                <Border Grid.Row="4" 
-                        Background="White" 
-                        BorderBrush="#E0E0E0" 
-                        BorderThickness="1" 
-                        Margin="0,0,0,10">
+                <!--  Ny kunde formular  -->
+                <Border
+                    Grid.Row="4"
+                    Margin="0,0,0,10"
+                    Background="White"
+                    BorderBrush="#E0E0E0"
+                    BorderThickness="1">
 
                     <ScrollViewer VerticalScrollBarVisibility="Auto">
                         <StackPanel Margin="15">
-                            <TextBlock Text="Opret Ny Kunde:" 
-                                       FontSize="14" 
-                                       FontWeight="SemiBold" 
-                                       Foreground="#333" 
-                                       Margin="0,0,0,10"/>
+                            <TextBlock
+                                Margin="0,0,0,10"
+                                FontSize="14"
+                                FontWeight="SemiBold"
+                                Foreground="#333"
+                                Text="Opret Ny Kunde:" />
 
-                            <!-- Kunde navn -->
-                            <TextBlock Text="Fulde navn:" 
-                                       FontSize="12" 
-                                       Foreground="#666" 
-                                       Margin="0,5,0,2"/>
-                            <TextBox Text="{Binding NewCustomerName, UpdateSourceTrigger=PropertyChanged}" 
-                                     Height="30" 
-                                     Padding="8,5"
-                                     BorderBrush="#E0E0E0"/>
+                            <!--  Kunde navn  -->
+                            <TextBlock
+                                Margin="0,5,0,2"
+                                FontSize="12"
+                                Foreground="#666"
+                                Text="Fulde navn:" />
+                            <TextBox
+                                Height="30"
+                                Padding="8,5"
+                                BorderBrush="#E0E0E0"
+                                Text="{Binding NewCustomerName, UpdateSourceTrigger=PropertyChanged}" />
 
-                            <!-- Telefon -->
-                            <TextBlock Text="Telefonnummer:" 
-                                       FontSize="12" 
-                                       Foreground="#666" 
-                                       Margin="0,10,0,2"/>
-                            <TextBox Text="{Binding NewCustomerPhone, UpdateSourceTrigger=PropertyChanged}" 
-                                     Height="30" 
-                                     Padding="8,5"
-                                     BorderBrush="#E0E0E0"/>
+                            <!--  Telefon  -->
+                            <TextBlock
+                                Margin="0,10,0,2"
+                                FontSize="12"
+                                Foreground="#666"
+                                Text="Telefonnummer:" />
+                            <TextBox
+                                Height="30"
+                                Padding="8,5"
+                                BorderBrush="#E0E0E0"
+                                Text="{Binding NewCustomerPhone, UpdateSourceTrigger=PropertyChanged}" />
 
-                            <!-- Email -->
-                            <TextBlock Text="Email:" 
-                                       FontSize="12" 
-                                       Foreground="#666" 
-                                       Margin="0,10,0,2"/>
-                            <TextBox Text="{Binding NewCustomerEmail, UpdateSourceTrigger=PropertyChanged}" 
-                                     Height="30" 
-                                     Padding="8,5"
-                                     BorderBrush="#E0E0E0"/>
+                            <!--  Email  -->
+                            <TextBlock
+                                Margin="0,10,0,2"
+                                FontSize="12"
+                                Foreground="#666"
+                                Text="Email:" />
+                            <TextBox
+                                Height="30"
+                                Padding="8,5"
+                                BorderBrush="#E0E0E0"
+                                Text="{Binding NewCustomerEmail, UpdateSourceTrigger=PropertyChanged}" />
 
-                            <!-- Adresse -->
-                            <TextBlock Text="Adresse:" 
-                                       FontSize="12" 
-                                       Foreground="#666" 
-                                       Margin="0,10,0,2"/>
-                            <TextBox Text="{Binding NewCustomerAddress, UpdateSourceTrigger=PropertyChanged}" 
-                                     Height="60" 
-                                     Padding="8,5"
-                                     BorderBrush="#E0E0E0"
-                                     TextWrapping="Wrap"
-                                     AcceptsReturn="True"
-                                     VerticalScrollBarVisibility="Auto"/>
+                            <!--  Adresse  -->
+                            <TextBlock
+                                Margin="0,10,0,2"
+                                FontSize="12"
+                                Foreground="#666"
+                                Text="Adresse:" />
+                            <TextBox
+                                Height="60"
+                                Padding="8,5"
+                                AcceptsReturn="True"
+                                BorderBrush="#E0E0E0"
+                                Text="{Binding NewCustomerAddress, UpdateSourceTrigger=PropertyChanged}"
+                                TextWrapping="Wrap"
+                                VerticalScrollBarVisibility="Auto" />
 
-                            <!-- Opret kunde knap -->
-                            <Button Content="Opret Kunde" 
-                                    Command="{Binding CreateCustomerCommand}"
-                                    Background="#4CAF50" 
-                                    Foreground="White" 
-                                    Height="35" 
-                                    Margin="0,15,0,0"
-                                    BorderThickness="0" 
-                                    FontWeight="SemiBold"/>
+                            <!--  Opret kunde knap  -->
+                            <Button
+                                Height="35"
+                                Margin="0,15,0,0"
+                                Background="#4CAF50"
+                                BorderThickness="0"
+                                Command="{Binding CreateCustomerCommand}"
+                                Content="Opret Kunde"
+                                FontWeight="SemiBold"
+                                Foreground="White" />
                         </StackPanel>
                     </ScrollViewer>
                 </Border>
 
-                <!-- Handlingsknapper -->
+                <!--  Handlingsknapper  -->
                 <StackPanel Grid.Row="5" Orientation="Vertical">
-                    <!-- Opret kontrakt knap -->
-                    <Button Content="Opret Reol Lejeaftale" 
-                            Command="{Binding CreateContractCommand}"
-                            IsEnabled="{Binding CanCreateContract}"
-                            Background="#2E5BBA" 
-                            Foreground="White" 
-                            Height="40" 
-                            Margin="0,5"
-                            BorderThickness="0" 
-                            FontSize="14"
-                            FontWeight="SemiBold"/>
+                    <!--  Opret kontrakt knap  -->
+                    <Button
+                        Height="40"
+                        Margin="0,5"
+                        Background="#2E5BBA"
+                        BorderThickness="0"
+                        Command="{Binding CreateContractCommand}"
+                        Content="Opret Reol Lejeaftale"
+                        FontSize="14"
+                        FontWeight="SemiBold"
+                        Foreground="White"
+                        IsEnabled="{Binding CanCreateContract}" />
 
-                    <!-- Ryd valg knap -->
-                    <Button Content="Ryd Valg" 
-                            Command="{Binding ClearSelectionCommand}"
-                            Background="#F44336" 
-                            Foreground="White" 
-                            Height="35" 
-                            Margin="0,5"
-                            BorderThickness="0"/>
+                    <!--  Ryd valg knap  -->
+                    <Button
+                        Height="35"
+                        Margin="0,5"
+                        Background="#F44336"
+                        BorderThickness="0"
+                        Command="{Binding ClearSelectionCommand}"
+                        Content="Ryd Valg"
+                        Foreground="White" />
                 </StackPanel>
             </Grid>
         </Grid>
 
-        <!-- Footer - Status bar -->
-        <Border Grid.Row="2" 
-                Background="#37474F" 
-                Margin="0,10,0,0"
-                Padding="15,8">
+        <!--  Footer - Status bar  -->
+        <Border
+            Grid.Row="2"
+            Margin="0,10,0,0"
+            Padding="15,8"
+            Background="#37474F">
 
-            <TextBlock Text="{Binding StatusMessage}" 
-                       FontSize="12" 
-                       Foreground="White" 
-                       VerticalAlignment="Center"/>
+            <TextBlock
+                VerticalAlignment="Center"
+                FontSize="12"
+                Foreground="White"
+                Text="{Binding StatusMessage}" />
         </Border>
     </Grid>
 </Window>
