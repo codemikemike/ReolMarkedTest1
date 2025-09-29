@@ -42,5 +42,13 @@ namespace ReolMarked.MVVM.Views
             var fakturaWindow = new FakturaWindow();
             fakturaWindow.Show();
         }
+        /// <summary>
+        /// Åbner opsigelse af reoler vinduet (UC5.1)
+        /// </summary>
+        private void OpenTerminationWindow_Click(object sender, RoutedEventArgs e)
+        {
+            var terminationWindow = new TerminationWindow();
+            terminationWindow.Show();
+        }
     }
 }

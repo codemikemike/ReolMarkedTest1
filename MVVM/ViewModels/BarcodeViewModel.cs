@@ -1,6 +1,9 @@
 ﻿using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Documents;
+using System.Windows.Media;
 using ReolMarked.MVVM.Models;
 using ReolMarked.MVVM.Repositories;
 using ReolMarked.MVVM.Services;
@@ -297,6 +300,7 @@ namespace ReolMarked.MVVM.ViewModels
         public RelayCommand AddProductCommand { get; private set; }
         public RelayCommand RemoveProductCommand { get; private set; }
         public RelayCommand GenerateLabelsCommand { get; private set; }
+        public RelayCommand PrintCommand { get; private set; }
         public RelayCommand ClearAllCommand { get; private set; }
 
         // Private metoder
@@ -321,6 +325,7 @@ namespace ReolMarked.MVVM.ViewModels
             AddProductCommand = new RelayCommand(AddProduct, CanExecuteAddProduct);
             RemoveProductCommand = new RelayCommand(RemoveProduct);
             GenerateLabelsCommand = new RelayCommand(GenerateLabels, CanExecuteGenerateLabels);
+            PrintCommand = new RelayCommand(PrintLabels, CanExecutePrint);
             ClearAllCommand = new RelayCommand(ClearAll);
         }
 
@@ -363,6 +368,10 @@ namespace ReolMarked.MVVM.ViewModels
 
             LabelRequests.Add(newRequest);
 
+            // Vigtig: Send notification for TotalLabels så UI opdateres
+            OnPropertyChanged(nameof(TotalLabels));
+            OnPropertyChanged(nameof(CanGenerateLabels));
+
             // Ryd input felterne
             NewProductName = "";
             NewProductPrice = 0;
@@ -384,6 +393,11 @@ namespace ReolMarked.MVVM.ViewModels
             if (parameter is LabelRequest request)
             {
                 LabelRequests.Remove(request);
+
+                // Vigtig: Send notification for TotalLabels så UI opdateres
+                OnPropertyChanged(nameof(TotalLabels));
+                OnPropertyChanged(nameof(CanGenerateLabels));
+
                 StatusMessage = $"Produkt fjernet. Total: {TotalLabels} stregkoder vil blive oprettet.";
             }
         }
@@ -433,6 +447,65 @@ namespace ReolMarked.MVVM.ViewModels
         }
 
         /// <summary>
+        /// Printer stregkoder
+        /// </summary>
+        private void PrintLabels(object parameter)
+        {
+            if (!string.IsNullOrEmpty(PrintOutput))
+            {
+                try
+                {
+                    var printDialog = new PrintDialog();
+                    if (printDialog.ShowDialog() == true)
+                    {
+                        // Opret en DrawingVisual til print
+                        var visual = new DrawingVisual();
+                        using (var context = visual.RenderOpen())
+                        {
+                            var typeface = new Typeface(new FontFamily("Consolas"), FontStyles.Normal, FontWeights.Normal, FontStretches.Normal);
+                            var fontSize = 10;
+                            var brush = Brushes.Black;
+
+                            var lines = PrintOutput.Split('\n');
+                            double yPosition = 0;
+                            double lineHeight = fontSize * 1.2;
+
+                            foreach (var line in lines)
+                            {
+                                if (!string.IsNullOrEmpty(line.Trim()))
+                                {
+                                    var formattedText = new FormattedText(
+                                        line,
+                                        System.Globalization.CultureInfo.CurrentCulture,
+                                        FlowDirection.LeftToRight,
+                                        typeface,
+                                        fontSize,
+                                        brush,
+                                        96); // DPI
+
+                                    context.DrawText(formattedText, new Point(20, yPosition));
+                                }
+                                yPosition += lineHeight;
+                            }
+                        }
+
+                        printDialog.PrintVisual(visual, "Stregkoder");
+                        StatusMessage = "Stregkoder sendt til printer!";
+                    }
+                }
+                catch (System.Exception ex)
+                {
+                    MessageBox.Show($"Fejl ved print: {ex.Message}", "Print fejl", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+            }
+        }
+
+        private bool CanExecutePrint(object parameter)
+        {
+            return HasPrintOutput;
+        }
+
+        /// <summary>
         /// Rydder alt og starter forfra
         /// </summary>
         private void ClearAll(object parameter)
@@ -448,6 +521,10 @@ namespace ReolMarked.MVVM.ViewModels
             PrintOutput = "";
             LastResult = null;
             StatusMessage = "Indtast dit telefonnummer for at finde dine reoler";
+
+            // Send notifications for alle relevante properties
+            OnPropertyChanged(nameof(TotalLabels));
+            OnPropertyChanged(nameof(CanGenerateLabels));
         }
 
         // INotifyPropertyChanged implementation

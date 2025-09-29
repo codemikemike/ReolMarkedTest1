@@ -38,12 +38,36 @@ namespace ReolMarked.MVVM.Services
         /// </summary>
         private void CreateTestData()
         {
-            // Peter har nogle eksisterende labels på sine reoler
-            var peter = _customerRepo.GetCustomerByPhone("12345678");
-            if (peter != null)
+            // Opret test labels for alle kunder i systemet
+            var allCustomers = _customerRepo.GetAllCustomers();
+
+            foreach (var customer in allCustomers)
             {
-                CreateLabelForCustomer(peter.CustomerId, 7, 45.00m, "Vintage Bog");
-                CreateLabelForCustomer(peter.CustomerId, 42, 125.00m, "Keramikskål");
+                // Opret 2-3 test produkter for hver kunde
+                switch (customer.CustomerName)
+                {
+                    case "Peter Hansen":
+                        CreateLabelForCustomer(customer.CustomerId, 7, 45.00m, "Vintage Bog");
+                        CreateLabelForCustomer(customer.CustomerId, 42, 125.00m, "Keramikskål");
+                        break;
+
+                    case "Mette Larsen":
+                        CreateLabelForCustomer(customer.CustomerId, 15, 75.00m, "Lampe");
+                        CreateLabelForCustomer(customer.CustomerId, 23, 250.00m, "Stol");
+                        CreateLabelForCustomer(customer.CustomerId, 15, 30.00m, "Bog");
+                        break;
+
+                    case "Lars Hansen":
+                        CreateLabelForCustomer(customer.CustomerId, 8, 150.00m, "Vase");
+                        CreateLabelForCustomer(customer.CustomerId, 35, 85.00m, "Billede");
+                        break;
+
+                    case "Anna Nielsen":
+                        CreateLabelForCustomer(customer.CustomerId, 12, 95.00m, "Kop");
+                        CreateLabelForCustomer(customer.CustomerId, 29, 180.00m, "Skål");
+                        CreateLabelForCustomer(customer.CustomerId, 12, 65.00m, "Tallerken");
+                        break;
+                }
             }
         }
 
@@ -184,14 +208,33 @@ namespace ReolMarked.MVVM.Services
 
             foreach (var label in labels)
             {
-                printOutput.AppendLine($"┌─────────────────────────────┐");
-                printOutput.AppendLine($"│  MIDDELBY REOLMARKED        │");
-                printOutput.AppendLine($"│                             │");
-                printOutput.AppendLine($"│  {label.BarCode,-25}  │");
-                printOutput.AppendLine($"│                             │");
-                printOutput.AppendLine($"│  Reol: {label.RackId,-2}    Pris: {label.ProductPrice:F0} kr. │");
-                printOutput.AppendLine($"│  {label.CreatedAt:dd/MM/yyyy HH:mm}               │");
-                printOutput.AppendLine($"└─────────────────────────────┘");
+                const int boxWidth = 37; // Total bredde af boksen
+
+                string topLine = "+" + new string('-', boxWidth - 2) + "+";
+                string emptyLine = "|" + new string(' ', boxWidth - 2) + "|";
+                string headerContent = "  MIDDELBY REOLMARKED";
+                string headerLine = "|" + headerContent + new string(' ', boxWidth - 2 - headerContent.Length) + "|";
+
+                // Stregkode linje
+                string barcodeContent = $"  {label.BarCode}";
+                string barcodeLine = "|" + barcodeContent + new string(' ', boxWidth - 2 - barcodeContent.Length) + "|";
+
+                // Reol og pris linje
+                string reolPrisContent = $"  Reol: {label.RackId}    Pris: {label.ProductPrice:F0} kr.";
+                string reolPrisLine = "|" + reolPrisContent + new string(' ', boxWidth - 2 - reolPrisContent.Length) + "|";
+
+                // Dato linje
+                string dateContent = $"  {label.CreatedAt:dd/MM/yyyy HH:mm}";
+                string dateLine = "|" + dateContent + new string(' ', boxWidth - 2 - dateContent.Length) + "|";
+
+                printOutput.AppendLine(topLine);
+                printOutput.AppendLine(headerLine);
+                printOutput.AppendLine(emptyLine);
+                printOutput.AppendLine(barcodeLine);
+                printOutput.AppendLine(emptyLine);
+                printOutput.AppendLine(reolPrisLine);
+                printOutput.AppendLine(dateLine);
+                printOutput.AppendLine(topLine);
                 printOutput.AppendLine();
             }
 

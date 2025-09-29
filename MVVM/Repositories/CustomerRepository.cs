@@ -28,6 +28,9 @@ namespace ReolMarked.MVVM.Repositories
         /// </summary>
         private void CreateTestData()
         {
+            // Tilføj test-kunde Peter (bruges i BarcodeService test-data)
+            AddCustomer("Peter Hansen", "12345678", "peter@reolmarked.dk", "Testvej 1, Middelby");
+
             // Tilføj nogle eksisterende kunder
             AddCustomer("Mette Larsen", "23456789", "mette@reolmarked.dk", "Middelby Hovedgade 12");
             AddCustomer("Lars Hansen", "34567890", "lars@email.dk", "Vestergade 15, Middelby");

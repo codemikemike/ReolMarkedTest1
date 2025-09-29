@@ -103,6 +103,16 @@
                         Click="OpenFakturaWindow_Click"
                         Content="Månedlig Afregning"
                         Foreground="White" />
+
+                    <!--  NY - UC5.1 knap - separat window  -->
+                    <Button
+                        Margin="5,0"
+                        Padding="15,8"
+                        Background="#F44336"
+                        BorderThickness="0"
+                        Click="OpenTerminationWindow_Click"
+                        Content="Opsig Reoler"
+                        Foreground="White" />
                 </StackPanel>
             </Grid>
         </Border>

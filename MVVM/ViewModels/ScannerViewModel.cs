@@ -4,6 +4,7 @@ using ReolMarked.MVVM.Repositories;
 using ReolMarked.MVVM.Services;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Linq;
 using System.Windows;
 
 namespace ReolMarked.MVVM.ViewModels
@@ -50,9 +51,6 @@ namespace ReolMarked.MVVM.ViewModels
 
             // Sæt initial status
             StatusMessage = "Scanner klar - scan første produkt";
-
-            // DEBUG - vis tilgængelige stregkoder
-            ShowAvailableBarcodes();
         }
 
         // Properties til UI binding
@@ -259,6 +257,7 @@ namespace ReolMarked.MVVM.ViewModels
         public RelayCommand CompletePaymentCommand { get; private set; }
         public RelayCommand CancelSaleCommand { get; private set; }
         public RelayCommand StartNewSaleCommand { get; private set; }
+        public RelayCommand CloseCommand { get; private set; }
 
         // Private metoder
 
@@ -297,27 +296,6 @@ namespace ReolMarked.MVVM.ViewModels
         }
 
         /// <summary>
-        /// DEBUG - viser tilgængelige stregkoder
-        /// </summary>
-        private void ShowAvailableBarcodes()
-        {
-            var allLabels = _barcodeService.GetAllActiveLabels();
-            string barcodes = "Tilgængelige stregkoder:\n\n";
-
-            foreach (var label in allLabels)
-            {
-                barcodes += $"{label.BarCode} - {label.ProductPrice:C0}\n";
-            }
-
-            if (allLabels.Count == 0)
-            {
-                barcodes = "Ingen stregkoder fundet!";
-            }
-
-            MessageBox.Show(barcodes, "Debug: Tilgængelige Stregkoder");
-        }
-
-        /// <summary>
         /// Opretter alle kommandoer
         /// </summary>
         private void CreateCommands()
@@ -328,6 +306,7 @@ namespace ReolMarked.MVVM.ViewModels
             CompletePaymentCommand = new RelayCommand(CompletePayment, CanExecuteCompletePayment);
             CancelSaleCommand = new RelayCommand(CancelSale);
             StartNewSaleCommand = new RelayCommand(StartNewSaleFromCommand);
+            CloseCommand = new RelayCommand(CloseWindow);
         }
 
         // Kommando metoder
@@ -471,6 +450,15 @@ namespace ReolMarked.MVVM.ViewModels
         {
             StartNewSale();
             StatusMessage = "Nyt salg startet - scan første produkt";
+        }
+
+        /// <summary>
+        /// Lukker scanner vinduet
+        /// </summary>
+        private void CloseWindow(object parameter)
+        {
+            Application.Current.Windows.OfType<Window>()
+                .FirstOrDefault(w => w.GetType().Name == "ScannerWindow")?.Close();
         }
 
         // INotifyPropertyChanged implementation

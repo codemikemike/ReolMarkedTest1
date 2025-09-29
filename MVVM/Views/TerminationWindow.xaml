@@ -1,0 +1,659 @@
+﻿<Window
+    x:Class="ReolMarked.MVVM.Views.TerminationWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Title="Middelby Reolmarked - Opsigelse af Reoler"
+    Width="1200"
+    Height="800"
+    Background="#F5F5F5"
+    WindowStartupLocation="CenterScreen">
+
+    <Grid Margin="10">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!--  Header  -->
+        <Border
+            Grid.Row="0"
+            Margin="0,0,0,15"
+            Background="#2E5BBA">
+            <StackPanel Margin="20,15">
+                <TextBlock
+                    FontSize="24"
+                    FontWeight="Bold"
+                    Foreground="White"
+                    Text="Opsigelse af Reoler" />
+                <TextBlock
+                    FontSize="14"
+                    Foreground="LightBlue"
+                    Text="Registrer og administrer opsigelser af reol lejeaftaler" />
+            </StackPanel>
+        </Border>
+
+        <!--  Main Content  -->
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="1*" />
+                <ColumnDefinition Width="10" />
+                <ColumnDefinition Width="1*" />
+            </Grid.ColumnDefinitions>
+
+            <!--  Venstre side - Opret opsigelse  -->
+            <Grid Grid.Column="0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+
+                <!--  Find kunde  -->
+                <Border
+                    Grid.Row="0"
+                    Margin="0,0,0,10"
+                    Background="White"
+                    BorderBrush="#E0E0E0"
+                    BorderThickness="1">
+                    <StackPanel Margin="15">
+                        <TextBlock
+                            Margin="0,0,0,10"
+                            FontSize="16"
+                            FontWeight="SemiBold"
+                            Foreground="#333"
+                            Text="Find Kunde:" />
+
+                        <TextBlock
+                            Margin="0,0,0,5"
+                            FontSize="12"
+                            Foreground="#666"
+                            Text="Telefonnummer:" />
+
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="10" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+
+                            <TextBox
+                                Grid.Column="0"
+                                Height="35"
+                                Padding="10,5"
+                                BorderBrush="#E0E0E0"
+                                FontSize="14"
+                                Text="{Binding CustomerPhone, UpdateSourceTrigger=PropertyChanged}" />
+
+                            <Button
+                                Grid.Column="2"
+                                Height="35"
+                                Padding="15,0"
+                                Background="#4CAF50"
+                                BorderThickness="0"
+                                Command="{Binding FindCustomerCommand}"
+                                Content="Find"
+                                FontWeight="SemiBold"
+                                Foreground="White" />
+                        </Grid>
+
+                        <TextBlock
+                            Margin="0,10,0,0"
+                            FontSize="14"
+                            FontWeight="SemiBold"
+                            Foreground="#2E5BBA"
+                            Text="{Binding SelectedCustomer.CustomerName, StringFormat='Kunde: {0}'}"
+                            Visibility="{Binding IsCustomerSelected}" />
+                    </StackPanel>
+                </Border>
+
+                <!--  Vælg reol til opsigelse  -->
+                <Border
+                    Grid.Row="1"
+                    Margin="0,0,0,10"
+                    Background="White"
+                    BorderBrush="#E0E0E0"
+                    BorderThickness="1"
+                    Visibility="{Binding IsCustomerSelected}">
+
+                    <StackPanel Margin="15">
+                        <TextBlock
+                            Margin="0,0,0,10"
+                            FontSize="16"
+                            FontWeight="SemiBold"
+                            Foreground="#333"
+                            Text="Vælg Reol til Opsigelse:" />
+
+                        <ComboBox
+                            Height="35"
+                            DisplayMemberPath="RackNumber"
+                            FontSize="14"
+                            ItemsSource="{Binding CustomerRacks}"
+                            SelectedValue="{Binding SelectedRackNumber}"
+                            SelectedValuePath="RackNumber" />
+
+                        <TextBlock
+                            Margin="0,5,0,0"
+                            FontSize="12"
+                            Foreground="#666"
+                            Text="{Binding SelectedRackNumber, StringFormat='Reol {0} valgt'}"
+                            Visibility="{Binding IsRackSelected}" />
+
+                        <TextBlock
+                            Margin="0,5,0,0"
+                            FontSize="11"
+                            FontStyle="Italic"
+                            Foreground="#999"
+                            Text="Viser kun reoler kunden kan opsige"
+                            Visibility="{Binding HasCustomerRacks}" />
+                    </StackPanel>
+                </Border>
+
+                <!--  Opsigelsesdetaljer  -->
+                <Border
+                    Grid.Row="2"
+                    Margin="0,0,0,10"
+                    Background="White"
+                    BorderBrush="#E0E0E0"
+                    BorderThickness="1"
+                    Visibility="{Binding IsRackSelected}">
+
+                    <StackPanel Margin="15">
+                        <TextBlock
+                            Margin="0,0,0,10"
+                            FontSize="16"
+                            FontWeight="SemiBold"
+                            Foreground="#333"
+                            Text="Opsigelsesdetaljer:" />
+
+                        <!--  Dato valg  -->
+                        <CheckBox
+                            Margin="0,0,0,10"
+                            Content="Brug specifik dato (ellers automatisk beregning)"
+                            FontSize="12"
+                            IsChecked="{Binding UseCustomDate}" />
+
+                        <TextBlock
+                            Margin="0,0,0,5"
+                            FontSize="12"
+                            Foreground="#666"
+                            Text="Opsigelsesdato:" />
+
+                        <DatePicker
+                            Height="35"
+                            IsEnabled="{Binding UseCustomDate}"
+                            SelectedDate="{Binding DesiredTerminationDate}" />
+
+                        <TextBlock
+                            Margin="0,5,0,15"
+                            FontSize="11"
+                            Foreground="#999"
+                            Text="Opsigelse før den 20. gælder fra næste måned. Efter den 20. gælder fra måneden efter."
+                            TextWrapping="Wrap"
+                            Visibility="{Binding UseAutomaticDate}" />
+
+                        <!--  Årsag  -->
+                        <TextBlock
+                            Margin="0,0,0,5"
+                            FontSize="12"
+                            Foreground="#666"
+                            Text="Årsag (valgfri):" />
+
+                        <TextBox
+                            Height="60"
+                            Padding="8,5"
+                            AcceptsReturn="True"
+                            BorderBrush="#E0E0E0"
+                            Text="{Binding TerminationReason, UpdateSourceTrigger=PropertyChanged}"
+                            TextWrapping="Wrap" />
+
+                        <!--  Opret opsigelse knap  -->
+                        <Button
+                            Height="40"
+                            Margin="0,15,0,0"
+                            Background="#FF9800"
+                            BorderThickness="0"
+                            Command="{Binding CreateTerminationCommand}"
+                            Content="Opret Opsigelse"
+                            FontSize="14"
+                            FontWeight="SemiBold"
+                            Foreground="White" />
+                    </StackPanel>
+                </Border>
+
+                <!--  Kundens eksisterende opsigelser  -->
+                <Border
+                    Grid.Row="3"
+                    Background="White"
+                    BorderBrush="#E0E0E0"
+                    BorderThickness="1"
+                    Visibility="{Binding HasCustomerTerminations}">
+
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+
+                        <Border
+                            Grid.Row="0"
+                            Padding="15,10"
+                            Background="#FFF3E0">
+                            <TextBlock
+                                FontSize="14"
+                                FontWeight="SemiBold"
+                                Foreground="#F57C00"
+                                Text="Kundens Eksisterende Opsigelser:" />
+                        </Border>
+
+                        <ListBox
+                            Grid.Row="1"
+                            Margin="10"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            ItemsSource="{Binding CustomerTerminations}">
+
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <Border
+                                        Margin="3"
+                                        Padding="10"
+                                        Background="#FFF8E1"
+                                        BorderBrush="#FF9800"
+                                        BorderThickness="1">
+
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+
+                                            <StackPanel Grid.Column="0">
+                                                <TextBlock
+                                                    FontSize="12"
+                                                    FontWeight="SemiBold"
+                                                    Text="{Binding RackNumberDisplay}" />
+                                                <TextBlock
+                                                    FontSize="11"
+                                                    Foreground="#666"
+                                                    Text="{Binding EffectiveDateFormatted, StringFormat='Træder i kraft: {0}'}" />
+                                                <TextBlock
+                                                    FontSize="10"
+                                                    Foreground="#999"
+                                                    Text="{Binding StatusText}" />
+                                            </StackPanel>
+
+                                            <Button
+                                                Grid.Column="1"
+                                                Padding="8,4"
+                                                Background="#F44336"
+                                                BorderThickness="0"
+                                                Command="{Binding DataContext.CancelTerminationCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                CommandParameter="{Binding}"
+                                                Content="Annuller"
+                                                FontSize="10"
+                                                Foreground="White"
+                                                Visibility="{Binding IsActive}" />
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </Grid>
+                </Border>
+            </Grid>
+
+            <!--  Splitter  -->
+            <GridSplitter
+                Grid.Column="1"
+                Width="2"
+                HorizontalAlignment="Stretch"
+                Background="#E0E0E0" />
+
+            <!--  Højre side - Oversigt og administration  -->
+            <Grid Grid.Column="2">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="1*" />
+                    <RowDefinition Height="10" />
+                    <RowDefinition Height="1*" />
+                    <RowDefinition Height="10" />
+                    <RowDefinition Height="1*" />
+                </Grid.RowDefinitions>
+
+                <!--  Handlingsknapper  -->
+                <Border
+                    Grid.Row="0"
+                    Margin="0,0,0,10"
+                    Background="White"
+                    BorderBrush="#E0E0E0"
+                    BorderThickness="1">
+
+                    <StackPanel Margin="15">
+                        <TextBlock
+                            Margin="0,0,0,10"
+                            FontSize="16"
+                            FontWeight="SemiBold"
+                            Foreground="#333"
+                            Text="Administration:" />
+
+                        <Button
+                            Height="35"
+                            Margin="0,5"
+                            Background="#4CAF50"
+                            BorderThickness="0"
+                            Command="{Binding ProcessEffectiveTerminationsCommand}"
+                            Content="Behandl Opsigelser der er Trådt i Kraft"
+                            FontSize="12"
+                            FontWeight="SemiBold"
+                            Foreground="White" />
+
+                        <Button
+                            Height="30"
+                            Margin="0,5"
+                            Background="#666"
+                            BorderThickness="0"
+                            Command="{Binding RefreshDataCommand}"
+                            Content="Genindlæs Data"
+                            FontSize="12"
+                            Foreground="White" />
+
+                        <Button
+                            Height="30"
+                            Margin="0,5"
+                            Background="#F44336"
+                            BorderThickness="0"
+                            Command="{Binding ClearSelectionCommand}"
+                            Content="Ryd Valg"
+                            FontSize="12"
+                            Foreground="White" />
+                    </StackPanel>
+                </Border>
+
+                <!--  Aktive opsigelser  -->
+                <Border
+                    Grid.Row="1"
+                    Background="White"
+                    BorderBrush="#E0E0E0"
+                    BorderThickness="1">
+
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+
+                        <Border
+                            Grid.Row="0"
+                            Padding="15,10"
+                            Background="#E8F5E8">
+                            <TextBlock
+                                FontSize="14"
+                                FontWeight="SemiBold"
+                                Foreground="#4CAF50"
+                                Text="{Binding ActiveTerminations.Count, StringFormat='Aktive Opsigelser ({0})'}" />
+                        </Border>
+
+                        <ListBox
+                            Grid.Row="1"
+                            Margin="8"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            ItemsSource="{Binding ActiveTerminations}"
+                            SelectedItem="{Binding SelectedTermination}">
+
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <Border
+                                        Margin="3"
+                                        Padding="8"
+                                        Background="#F9FFF9"
+                                        BorderBrush="#4CAF50"
+                                        BorderThickness="1">
+
+                                        <StackPanel>
+                                            <TextBlock
+                                                FontSize="11"
+                                                FontWeight="SemiBold"
+                                                Text="{Binding CustomerName}" />
+                                            <TextBlock
+                                                FontSize="10"
+                                                Foreground="#666"
+                                                Text="{Binding RackNumberDisplay}" />
+                                            <TextBlock
+                                                FontSize="10"
+                                                Foreground="#666"
+                                                Text="{Binding EffectiveDateFormatted, StringFormat='Træder i kraft: {0}'}" />
+                                            <TextBlock
+                                                FontSize="9"
+                                                Foreground="#999"
+                                                Text="{Binding DaysUntilEffective, StringFormat=\{0\} dage tilbage}" />
+                                        </StackPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+
+                        <TextBlock
+                            Grid.Row="1"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            FontSize="14"
+                            FontStyle="Italic"
+                            Foreground="#999"
+                            Text="Ingen aktive opsigelser">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding HasActiveTerminations}" Value="False">
+                                            <Setter Property="Visibility" Value="Visible" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                    </Grid>
+                </Border>
+
+                <!--  Opsigelser der skal behandles  -->
+                <Border
+                    Grid.Row="3"
+                    Background="White"
+                    BorderBrush="#E0E0E0"
+                    BorderThickness="1">
+
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+
+                        <Border
+                            Grid.Row="0"
+                            Padding="15,10"
+                            Background="#FFEBEE">
+                            <TextBlock
+                                FontSize="14"
+                                FontWeight="SemiBold"
+                                Foreground="#F44336"
+                                Text="{Binding TerminationsToProcess.Count, StringFormat='Skal Behandles ({0})'}" />
+                        </Border>
+
+                        <ListBox
+                            Grid.Row="1"
+                            Margin="8"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            ItemsSource="{Binding TerminationsToProcess}">
+
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <Border
+                                        Margin="3"
+                                        Padding="8"
+                                        Background="#FFF9F9"
+                                        BorderBrush="#F44336"
+                                        BorderThickness="1">
+
+                                        <StackPanel>
+                                            <TextBlock
+                                                FontSize="11"
+                                                FontWeight="SemiBold"
+                                                Text="{Binding CustomerName}" />
+                                            <TextBlock
+                                                FontSize="10"
+                                                Foreground="#666"
+                                                Text="{Binding RackNumberDisplay}" />
+                                            <TextBlock
+                                                FontSize="10"
+                                                Foreground="#F44336"
+                                                Text="Klar til behandling" />
+                                        </StackPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+
+                        <TextBlock
+                            Grid.Row="1"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            FontSize="14"
+                            FontStyle="Italic"
+                            Foreground="#999"
+                            Text="Ingen opsigelser at behandle">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding HasTerminationsToProcess}" Value="False">
+                                            <Setter Property="Visibility" Value="Visible" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                    </Grid>
+                </Border>
+
+                <!--  Behandlede opsigelser (Historik)  -->
+                <Border
+                    Grid.Row="5"
+                    Background="White"
+                    BorderBrush="#E0E0E0"
+                    BorderThickness="1">
+
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+
+                        <Border
+                            Grid.Row="0"
+                            Padding="15,10"
+                            Background="#F0F0F0">
+                            <TextBlock
+                                FontSize="14"
+                                FontWeight="SemiBold"
+                                Foreground="#666"
+                                Text="{Binding ProcessedTerminations.Count, StringFormat='Behandlede Opsigelser ({0})'}" />
+                        </Border>
+
+                        <ListBox
+                            Grid.Row="1"
+                            Margin="8"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            ItemsSource="{Binding ProcessedTerminations}">
+
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <Border
+                                        Margin="3"
+                                        Padding="8"
+                                        Background="#FAFAFA"
+                                        BorderBrush="#CCC"
+                                        BorderThickness="1">
+
+                                        <StackPanel>
+                                            <TextBlock
+                                                FontSize="11"
+                                                FontWeight="SemiBold"
+                                                Text="{Binding CustomerName}" />
+                                            <TextBlock
+                                                FontSize="10"
+                                                Foreground="#666"
+                                                Text="{Binding RackNumberDisplay}" />
+                                            <TextBlock
+                                                FontSize="10"
+                                                Foreground="#666"
+                                                Text="{Binding EffectiveDateFormatted, StringFormat='Trådt i kraft: {0}'}" />
+                                            <TextBlock
+                                                FontSize="9"
+                                                Foreground="#999"
+                                                Text="Behandlet" />
+                                        </StackPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+
+                        <TextBlock
+                            Grid.Row="1"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            FontSize="14"
+                            FontStyle="Italic"
+                            Foreground="#999"
+                            Text="Ingen opsigelser behandlet endnu">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding HasProcessedTerminations}" Value="False">
+                                            <Setter Property="Visibility" Value="Visible" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                    </Grid>
+                </Border>
+            </Grid>
+        </Grid>
+
+        <!--  Footer - Status  -->
+        <Border
+            Grid.Row="2"
+            Margin="0,15,0,0"
+            Padding="15,8"
+            Background="#37474F">
+
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <TextBlock
+                    Grid.Column="0"
+                    VerticalAlignment="Center"
+                    FontSize="12"
+                    Foreground="White"
+                    Text="{Binding StatusMessage}" />
+
+                <Button
+                    Grid.Column="1"
+                    Padding="15,5"
+                    Background="#666"
+                    BorderThickness="0"
+                    Click="CloseButton_Click"
+                    Content="Luk"
+                    Foreground="White" />
+            </Grid>
+        </Border>
+    </Grid>
+</Window>
