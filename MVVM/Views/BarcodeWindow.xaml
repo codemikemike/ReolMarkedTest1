@@ -1,0 +1,436 @@
+﻿<Window
+    x:Class="ReolMarked.MVVM.Views.BarcodeWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Title="Middelby Reolmarked - Opret Stregkoder"
+    Width="1000"
+    Height="830"
+    Background="#F5F5F5"
+    WindowStartupLocation="CenterScreen">
+
+    <Grid Margin="10">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!--  Header  -->
+        <Border
+            Grid.Row="0"
+            Margin="0,0,0,15"
+            Background="#2E5BBA">
+            <StackPanel Margin="20,15">
+                <TextBlock
+                    FontSize="24"
+                    FontWeight="Bold"
+                    Foreground="White"
+                    Text="Opret Stregkoder til Dine Produkter" />
+                <TextBlock
+                    FontSize="14"
+                    Foreground="LightBlue"
+                    Text="Indtast dit telefonnummer og vælg hvilken reol du vil lave stregkoder til" />
+            </StackPanel>
+        </Border>
+
+        <!--  Main Content  -->
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="1*" />
+                <ColumnDefinition Width="10" />
+                <ColumnDefinition Width="1*" />
+            </Grid.ColumnDefinitions>
+
+            <!--  Venstre side - Input  -->
+            <Grid Grid.Column="0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+
+                <!--  Find kunde  -->
+                <Border
+                    Grid.Row="0"
+                    Margin="0,0,0,10"
+                    Background="White"
+                    BorderBrush="#E0E0E0"
+                    BorderThickness="1">
+                    <StackPanel Margin="15">
+                        <TextBlock
+                            Margin="0,0,0,10"
+                            FontSize="16"
+                            FontWeight="SemiBold"
+                            Foreground="#333"
+                            Text="Find Dig Selv:" />
+
+                        <TextBlock
+                            Margin="0,0,0,5"
+                            FontSize="12"
+                            Foreground="#666"
+                            Text="Telefonnummer:" />
+
+                        <TextBox
+                            Height="35"
+                            Padding="10,5"
+                            BorderBrush="#E0E0E0"
+                            FontSize="14"
+                            Text="{Binding CustomerPhone, UpdateSourceTrigger=PropertyChanged}" />
+
+                        <Button
+                            Height="40"
+                            Margin="0,10,0,0"
+                            Background="#4CAF50"
+                            BorderThickness="0"
+                            Command="{Binding FindCustomerCommand}"
+                            Content="Find Mine Reoler"
+                            FontWeight="SemiBold"
+                            Foreground="White" />
+
+                        <TextBlock
+                            Margin="0,10,0,0"
+                            FontSize="14"
+                            FontWeight="SemiBold"
+                            Foreground="#2E5BBA"
+                            Text="{Binding SelectedCustomer.CustomerName, StringFormat='Velkommen {0}!'}"
+                            Visibility="{Binding IsCustomerSelected}" />
+                    </StackPanel>
+                </Border>
+
+                <!--  Vælg reol  -->
+                <Border
+                    Grid.Row="1"
+                    Margin="0,0,0,10"
+                    Background="White"
+                    BorderBrush="#E0E0E0"
+                    BorderThickness="1"
+                    Visibility="{Binding IsCustomerSelected}">
+
+                    <StackPanel Margin="15">
+                        <TextBlock
+                            Margin="0,0,0,10"
+                            FontSize="16"
+                            FontWeight="SemiBold"
+                            Foreground="#333"
+                            Text="Vælg Din Reol:" />
+
+                        <ComboBox
+                            Height="35"
+                            DisplayMemberPath="RackNumber"
+                            FontSize="14"
+                            ItemsSource="{Binding CustomerRacks}"
+                            SelectedValue="{Binding RackNumber}"
+                            SelectedValuePath="RackNumber" />
+
+                        <TextBlock
+                            Margin="0,5,0,0"
+                            FontSize="12"
+                            Foreground="#666"
+                            Text="{Binding RackNumber, StringFormat='Reol {0} valgt'}"
+                            Visibility="{Binding IsRackSelected}" />
+                    </StackPanel>
+                </Border>
+
+                <!--  Tilføj produkter  -->
+                <Border
+                    Grid.Row="2"
+                    Margin="0,0,0,10"
+                    Background="White"
+                    BorderBrush="#E0E0E0"
+                    BorderThickness="1"
+                    Visibility="{Binding IsRackSelected}">
+
+                    <StackPanel Margin="15">
+                        <TextBlock
+                            Margin="0,0,0,10"
+                            FontSize="16"
+                            FontWeight="SemiBold"
+                            Foreground="#333"
+                            Text="Tilføj Produkter:" />
+
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="10" />
+                                <ColumnDefinition Width="80" />
+                            </Grid.ColumnDefinitions>
+
+                            <!--  Produktnavn  -->
+                            <TextBlock
+                                Grid.Row="0"
+                                Grid.Column="0"
+                                Margin="0,0,0,5"
+                                FontSize="12"
+                                Foreground="#666"
+                                Text="Produktnavn:" />
+                            <TextBox
+                                Grid.Row="1"
+                                Grid.Column="0"
+                                Height="30"
+                                Padding="8,5"
+                                BorderBrush="#E0E0E0"
+                                Text="{Binding NewProductName, UpdateSourceTrigger=PropertyChanged}" />
+
+                            <!--  Antal  -->
+                            <TextBlock
+                                Grid.Row="0"
+                                Grid.Column="2"
+                                Margin="0,0,0,5"
+                                FontSize="12"
+                                Foreground="#666"
+                                Text="Antal:" />
+                            <TextBox
+                                Grid.Row="1"
+                                Grid.Column="2"
+                                Height="30"
+                                Padding="8,5"
+                                BorderBrush="#E0E0E0"
+                                Text="{Binding NewProductQuantity, UpdateSourceTrigger=PropertyChanged}" />
+
+                            <!--  Pris  -->
+                            <TextBlock
+                                Grid.Row="2"
+                                Grid.Column="0"
+                                Margin="0,10,0,5"
+                                FontSize="12"
+                                Foreground="#666"
+                                Text="Pris (kr):" />
+                            <TextBox
+                                Grid.Row="3"
+                                Grid.Column="0"
+                                Height="30"
+                                Padding="8,5"
+                                BorderBrush="#E0E0E0"
+                                Text="{Binding NewProductPrice, UpdateSourceTrigger=PropertyChanged}" />
+
+                            <!--  Tilføj knap  -->
+                            <Button
+                                Grid.Row="3"
+                                Grid.Column="2"
+                                Height="30"
+                                Background="#FF9800"
+                                BorderThickness="0"
+                                Command="{Binding AddProductCommand}"
+                                Content="Tilføj"
+                                FontWeight="SemiBold"
+                                Foreground="White" />
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <!--  Produktliste  -->
+                <Border
+                    Grid.Row="3"
+                    Background="White"
+                    BorderBrush="#E0E0E0"
+                    BorderThickness="1"
+                    Visibility="{Binding CanGenerateLabels}">
+
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+
+                        <Border
+                            Grid.Row="0"
+                            Padding="15,10"
+                            Background="#F8F9FA">
+                            <TextBlock
+                                FontSize="16"
+                                FontWeight="SemiBold"
+                                Foreground="#333"
+                                Text="{Binding TotalLabels, StringFormat='Produkter ({0} stregkoder)'}" />
+                        </Border>
+
+                        <ListBox
+                            Grid.Row="1"
+                            Margin="10"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            ItemsSource="{Binding LabelRequests}">
+
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <Border
+                                        Margin="5"
+                                        Padding="10"
+                                        Background="White"
+                                        BorderBrush="#E0E0E0"
+                                        BorderThickness="1">
+
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+
+                                            <StackPanel Grid.Column="0">
+                                                <TextBlock
+                                                    FontSize="14"
+                                                    FontWeight="SemiBold"
+                                                    Text="{Binding Name}" />
+                                                <TextBlock
+                                                    FontSize="12"
+                                                    Foreground="#666"
+                                                    Text="{Binding DisplayText}" />
+                                            </StackPanel>
+
+                                            <Button
+                                                Grid.Column="1"
+                                                Padding="10,5"
+                                                Background="#F44336"
+                                                BorderThickness="0"
+                                                Command="{Binding DataContext.RemoveProductCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                CommandParameter="{Binding}"
+                                                Content="Fjern"
+                                                FontSize="12"
+                                                Foreground="White" />
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+
+                        <Button
+                            Grid.Row="2"
+                            Height="50"
+                            Margin="15"
+                            Background="#2E5BBA"
+                            BorderThickness="0"
+                            Command="{Binding GenerateLabelsCommand}"
+                            Content="Opret Alle Stregkoder"
+                            FontSize="16"
+                            FontWeight="Bold"
+                            Foreground="White" />
+                    </Grid>
+                </Border>
+            </Grid>
+
+            <!--  Splitter  -->
+            <GridSplitter
+                Grid.Column="1"
+                Width="2"
+                HorizontalAlignment="Stretch"
+                Background="#E0E0E0" />
+
+            <!--  Højre side - Print output  -->
+            <Grid Grid.Column="2">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+
+                <Border
+                    Grid.Row="0"
+                    Padding="15,10"
+                    Background="#F8F9FA">
+                    <TextBlock
+                        FontSize="16"
+                        FontWeight="SemiBold"
+                        Foreground="#333"
+                        Text="Stregkode Print Output" />
+                </Border>
+
+                <ScrollViewer
+                    Grid.Row="1"
+                    HorizontalScrollBarVisibility="Auto"
+                    VerticalScrollBarVisibility="Auto">
+                    <TextBox
+                        Padding="15"
+                        AcceptsReturn="True"
+                        Background="White"
+                        BorderThickness="0"
+                        FontFamily="Consolas"
+                        FontSize="10"
+                        IsReadOnly="True"
+                        Text="{Binding PrintOutput}"
+                        TextWrapping="NoWrap" />
+                </ScrollViewer>
+
+                <TextBlock
+                    Grid.Row="1"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    FontSize="14"
+                    FontStyle="Italic"
+                    Foreground="#999"
+                    Text="Stregkoder vil blive vist her efter generering">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding HasPrintOutput}" Value="False">
+                                    <Setter Property="Visibility" Value="Visible" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+            </Grid>
+        </Grid>
+
+        <!--  Footer - Status og handlinger  -->
+        <Grid Grid.Row="2">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <!--  Status  -->
+            <Border
+                Grid.Column="0"
+                Margin="0,15,10,0"
+                Padding="15,10"
+                Background="#37474F">
+                <TextBlock
+                    VerticalAlignment="Center"
+                    FontSize="12"
+                    Foreground="White"
+                    Text="{Binding StatusMessage}" />
+            </Border>
+
+            <!--  Handlingsknapper  -->
+            <StackPanel
+                Grid.Column="1"
+                Margin="0,15,0,0"
+                Orientation="Horizontal">
+                <Button
+                    Margin="5,0"
+                    Padding="20,10"
+                    Background="#4CAF50"
+                    BorderThickness="0"
+                    Command="{Binding PrintCommand}"
+                    Content="Print Stregkoder"
+                    Foreground="White"
+                    IsEnabled="{Binding HasPrintOutput}" />
+
+                <Button
+                    Margin="5,0"
+                    Padding="20,10"
+                    Background="#F44336"
+                    BorderThickness="0"
+                    Command="{Binding ClearAllCommand}"
+                    Content="Start Forfra"
+                    Foreground="White" />
+
+                <Button
+                    Margin="5,0"
+                    Padding="20,10"
+                    Background="#666"
+                    BorderThickness="0"
+                    Click="CloseButton_Click"
+                    Content="Luk"
+                    Foreground="White" />
+            </StackPanel>
+        </Grid>
+    </Grid>
+</Window>

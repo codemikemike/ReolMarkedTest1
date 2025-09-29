@@ -1,5 +1,6 @@
-﻿using System.Windows;
-using ReolMarked.MVVM.ViewModels;
+﻿using ReolMarked.MVVM.ViewModels;
+using ReolMarkedTest1.MVVM.Views;
+using System.Windows;
 
 namespace ReolMarked.MVVM.Views
 {
@@ -18,6 +19,36 @@ namespace ReolMarked.MVVM.Views
             // Sæt ViewModel som DataContext for databinding
             // Dette gør at {Binding} i XAML virker
             DataContext = new MainViewModel();
+        }
+        /// <summary>
+        /// Åbner stregkode genererings vinduet (UC3.2)
+        /// </summary>
+        private void OpenBarcodeWindow_Click(object sender, RoutedEventArgs e)
+        {
+            var barcodeWindow = new BarcodeWindow();
+            barcodeWindow.Show();
+        }
+
+        /// <summary>
+        /// Åbner scanner kasse vinduet (UC3.1)
+        /// </summary>
+        private void OpenScannerWindow_Click(object sender, RoutedEventArgs e)
+        {
+            var scannerWindow = new ScannerWindow();
+            scannerWindow.Show();
+        }
+        private void OpenFakturaWindow_Click(object sender, RoutedEventArgs e)
+        {
+            var fakturaWindow = new FakturaWindow();
+            fakturaWindow.Show();
+        }
+        /// <summary>
+        /// Åbner opsigelse af reoler vinduet (UC5.1)
+        /// </summary>
+        private void OpenTerminationWindow_Click(object sender, RoutedEventArgs e)
+        {
+            var terminationWindow = new TerminationWindow();
+            terminationWindow.Show();
         }
     }
 }
