@@ -2,6 +2,7 @@
 using ReolMarked.MVVM.Models;
 using ReolMarked.MVVM.Repositories;
 using ReolMarked.MVVM.Services;
+using ReolMarked.MVVM.Infrastructure;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
@@ -36,12 +37,12 @@ namespace ReolMarked.MVVM.ViewModels
         // Konstruktør - opsætter services og starter nyt salg
         public ScannerViewModel()
         {
-            // Opret repositories og services
-            _rackRepository = new RackRepository();
-            _customerRepository = new CustomerRepository();
-            _rentalService = new RentalService(_customerRepository, _rackRepository);
-            _barcodeService = new BarcodeService(_customerRepository, _rackRepository, _rentalService);
-            _saleService = new SaleService(_barcodeService);
+            // RETTET: Brug ServiceLocator i stedet for at oprette nye instanser
+            _rackRepository = ServiceLocator.RackRepository;
+            _customerRepository = ServiceLocator.CustomerRepository;
+            _rentalService = ServiceLocator.RentalService;
+            _barcodeService = ServiceLocator.BarcodeService;
+            _saleService = ServiceLocator.SaleService;
 
             // Start nyt salg
             StartNewSale();
@@ -95,7 +96,6 @@ namespace ReolMarked.MVVM.ViewModels
             {
                 _barcodeInput = value;
                 OnPropertyChanged(nameof(BarcodeInput));
-                OnPropertyChanged(nameof(CanScanBarcode));
             }
         }
 
@@ -211,11 +211,11 @@ namespace ReolMarked.MVVM.ViewModels
         }
 
         /// <summary>
-        /// Om der kan scannes en stregkode
+        /// Om der kan scannes en stregkode - RETTET
         /// </summary>
         public bool CanScanBarcode
         {
-            get { return !string.IsNullOrEmpty(BarcodeInput) && IsScanningMode; }
+            get { return IsScanningMode; }
         }
 
         /// <summary>
@@ -316,8 +316,12 @@ namespace ReolMarked.MVVM.ViewModels
         /// </summary>
         private void ScanBarcode(object parameter)
         {
+            // RETTET: Tjek om input er tomt
             if (CurrentSale == null || string.IsNullOrEmpty(BarcodeInput))
+            {
+                StatusMessage = "Ingen stregkode indtastet";
                 return;
+            }
 
             var result = _saleService.ScanBarcode(CurrentSale, BarcodeInput);
 
@@ -333,6 +337,10 @@ namespace ReolMarked.MVVM.ViewModels
                 UpdateTotalAmount();
                 BarcodeInput = ""; // Ryd scanner input
                 StatusMessage = result.Message;
+
+                // TILFØJ DISSE LINJER:
+                OnPropertyChanged(nameof(HasProducts));
+                OnPropertyChanged(nameof(ProductCount));
             }
             else
             {
@@ -343,7 +351,8 @@ namespace ReolMarked.MVVM.ViewModels
 
         private bool CanExecuteScanBarcode(object parameter)
         {
-            return CanScanBarcode;
+            // RETTET: Kun tjek IsScanningMode, ikke BarcodeInput
+            return IsScanningMode;
         }
 
         /// <summary>

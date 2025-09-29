@@ -8,6 +8,7 @@ using ReolMarked.MVVM.Models;
 using ReolMarked.MVVM.Repositories;
 using ReolMarked.MVVM.Services;
 using ReolMarked.MVVM.Commands;
+using ReolMarked.MVVM.Infrastructure;
 
 namespace ReolMarked.MVVM.ViewModels
 {
@@ -39,11 +40,11 @@ namespace ReolMarked.MVVM.ViewModels
         // Konstruktør - opsætter services
         public BarcodeViewModel()
         {
-            // Opret repositories og services
-            _rackRepository = new RackRepository();
-            _customerRepository = new CustomerRepository();
-            _rentalService = new RentalService(_customerRepository, _rackRepository);
-            _barcodeService = new BarcodeService(_customerRepository, _rackRepository, _rentalService);
+            // RETTET: Brug ServiceLocator i stedet for at oprette nye instanser
+            _rackRepository = ServiceLocator.RackRepository;
+            _customerRepository = ServiceLocator.CustomerRepository;
+            _rentalService = ServiceLocator.RentalService;
+            _barcodeService = ServiceLocator.BarcodeService;
 
             // Opret kommandoer
             CreateCommands();

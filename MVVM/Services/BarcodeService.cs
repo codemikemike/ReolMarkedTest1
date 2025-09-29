@@ -38,37 +38,8 @@ namespace ReolMarked.MVVM.Services
         /// </summary>
         private void CreateTestData()
         {
-            // Opret test labels for alle kunder i systemet
-            var allCustomers = _customerRepo.GetAllCustomers();
-
-            foreach (var customer in allCustomers)
-            {
-                // Opret 2-3 test produkter for hver kunde
-                switch (customer.CustomerName)
-                {
-                    case "Peter Hansen":
-                        CreateLabelForCustomer(customer.CustomerId, 7, 45.00m, "Vintage Bog");
-                        CreateLabelForCustomer(customer.CustomerId, 42, 125.00m, "Keramikskål");
-                        break;
-
-                    case "Mette Larsen":
-                        CreateLabelForCustomer(customer.CustomerId, 15, 75.00m, "Lampe");
-                        CreateLabelForCustomer(customer.CustomerId, 23, 250.00m, "Stol");
-                        CreateLabelForCustomer(customer.CustomerId, 15, 30.00m, "Bog");
-                        break;
-
-                    case "Lars Hansen":
-                        CreateLabelForCustomer(customer.CustomerId, 8, 150.00m, "Vase");
-                        CreateLabelForCustomer(customer.CustomerId, 35, 85.00m, "Billede");
-                        break;
-
-                    case "Anna Nielsen":
-                        CreateLabelForCustomer(customer.CustomerId, 12, 95.00m, "Kop");
-                        CreateLabelForCustomer(customer.CustomerId, 29, 180.00m, "Skål");
-                        CreateLabelForCustomer(customer.CustomerId, 12, 65.00m, "Tallerken");
-                        break;
-                }
-            }
+            // Vent med at oprette test labels indtil efter RentalService har oprettet lejeaftaler
+            // Dette sker i SaleService i stedet
         }
 
         /// <summary>
@@ -320,14 +291,22 @@ namespace ReolMarked.MVVM.Services
         /// </summary>
         public Label FindLabelByBarcode(string barcode)
         {
+            // DEBUG: Log hvad vi søger efter
+            System.Diagnostics.Debug.WriteLine($"Søger efter stregkode: '{barcode}'");
+            System.Diagnostics.Debug.WriteLine($"Antal labels i system: {_labels.Count}");
+
             foreach (var label in _labels)
             {
+                System.Diagnostics.Debug.WriteLine($"  Sammenligner med: '{label.BarCode}'");
+
                 if (label.BarCode == barcode && !label.IsVoid)
                 {
+                    System.Diagnostics.Debug.WriteLine($"  MATCH FUNDET!");
                     return label;
                 }
             }
 
+            System.Diagnostics.Debug.WriteLine($"INGEN MATCH - stregkode ikke fundet");
             return null;
         }
 

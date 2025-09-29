@@ -36,6 +36,7 @@ namespace ReolMarked.MVVM.Services
 
         /// <summary>
         /// Opretter test stregkoder så scanner systemet har noget at arbejde med
+        /// NU FLYTTET HERTIL - efter RentalService har oprettet lejeaftaler
         /// </summary>
         private void CreateTestBarcodes()
         {
@@ -43,6 +44,7 @@ namespace ReolMarked.MVVM.Services
             var peter = _barcodeService.FindCustomerByPhone("12345678");
             if (peter != null)
             {
+                // Peter har reol 7 og 42 fra RentalService.CreateTestData()
                 _barcodeService.CreateLabelForCustomer(peter.CustomerId, 7, 125.00m, "Keramikskål");
                 _barcodeService.CreateLabelForCustomer(peter.CustomerId, 7, 45.00m, "Vintage bog");
                 _barcodeService.CreateLabelForCustomer(peter.CustomerId, 42, 200.00m, "Antik vase");
@@ -51,6 +53,7 @@ namespace ReolMarked.MVVM.Services
             var mette = _barcodeService.FindCustomerByPhone("23456789");
             if (mette != null)
             {
+                // Mette har reol 15 fra RentalService.CreateTestData()
                 _barcodeService.CreateLabelForCustomer(mette.CustomerId, 15, 85.00m, "Porcelænsfigur");
                 _barcodeService.CreateLabelForCustomer(mette.CustomerId, 15, 150.00m, "Vintage taske");
             }

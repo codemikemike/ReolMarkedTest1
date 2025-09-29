@@ -292,16 +292,20 @@ namespace ReolMarked.MVVM.Models
         /// <summary>
         /// Genererer en stregkode baseret på reol og pris
         /// Format: "REOL07-50KR-001"
+        /// RETTET: Bruger heltal for pris for at undgå decimal problemer
         /// </summary>
         public void GenerateBarCode()
         {
             if (RackId > 0 && ProductPrice > 0)
             {
-                // Generer unikt nummer baseret på LabelId og tidspunkt
-                int uniqueNumber = LabelId > 0 ? LabelId : DateTime.Now.Millisecond + DateTime.Now.Second * 1000;
+                // Brug LabelId hvis tilgængelig, ellers brug tidsstempel
+                int uniqueNumber = LabelId > 0 ? LabelId : (DateTime.Now.Millisecond % 1000);
 
-                // Generer stregkode
-                string newBarCode = $"REOL{RackId:D2}-{ProductPrice:F0}KR-{uniqueNumber:D3}";
+                // RETTET: Cast pris til int for at få heltal uden decimaler
+                int priceAsInt = (int)ProductPrice;
+
+                // Generer stregkode med konsistent format
+                string newBarCode = $"REOL{RackId:D2}-{priceAsInt}KR-{uniqueNumber:D3}";
 
                 // Undgå uendelig loop ved at tjekke om stregkoden faktisk ændres
                 if (BarCode != newBarCode)
