@@ -93,8 +93,18 @@
                             FontSize="14"
                             FontWeight="SemiBold"
                             Foreground="#2E5BBA"
-                            Text="{Binding SelectedCustomer.CustomerName, StringFormat='Velkommen {0}!'}"
-                            Visibility="{Binding IsCustomerSelected}" />
+                            Text="{Binding SelectedCustomer.Name, StringFormat='Velkommen {0}!'}">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsCustomerSelected}" Value="True">
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
                     </StackPanel>
                 </Border>
 
@@ -104,8 +114,17 @@
                     Margin="0,0,0,10"
                     Background="White"
                     BorderBrush="#E0E0E0"
-                    BorderThickness="1"
-                    Visibility="{Binding IsCustomerSelected}">
+                    BorderThickness="1">
+                    <Border.Style>
+                        <Style TargetType="Border">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsCustomerSelected}" Value="True">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Border.Style>
 
                     <StackPanel Margin="15">
                         <TextBlock
@@ -127,8 +146,18 @@
                             Margin="0,5,0,0"
                             FontSize="12"
                             Foreground="#666"
-                            Text="{Binding RackNumber, StringFormat='Reol {0} valgt'}"
-                            Visibility="{Binding IsRackSelected}" />
+                            Text="{Binding RackNumber, StringFormat='Reol {0} valgt'}">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsRackSelected}" Value="True">
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
                     </StackPanel>
                 </Border>
 
@@ -138,8 +167,17 @@
                     Margin="0,0,0,10"
                     Background="White"
                     BorderBrush="#E0E0E0"
-                    BorderThickness="1"
-                    Visibility="{Binding IsRackSelected}">
+                    BorderThickness="1">
+                    <Border.Style>
+                        <Style TargetType="Border">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsRackSelected}" Value="True">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Border.Style>
 
                     <StackPanel Margin="15">
                         <TextBlock
@@ -230,8 +268,17 @@
                     Grid.Row="3"
                     Background="White"
                     BorderBrush="#E0E0E0"
-                    BorderThickness="1"
-                    Visibility="{Binding CanGenerateLabels}">
+                    BorderThickness="1">
+                    <Border.Style>
+                        <Style TargetType="Border">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding CanGenerateLabels}" Value="True">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Border.Style>
 
                     <Grid>
                         <Grid.RowDefinitions>
@@ -403,16 +450,6 @@
                 Grid.Column="1"
                 Margin="0,15,0,0"
                 Orientation="Horizontal">
-                <Button
-                    Margin="5,0"
-                    Padding="20,10"
-                    Background="#4CAF50"
-                    BorderThickness="0"
-                    Command="{Binding PrintCommand}"
-                    Content="Print Stregkoder"
-                    Foreground="White"
-                    IsEnabled="{Binding HasPrintOutput}" />
-
                 <Button
                     Margin="5,0"
                     Padding="20,10"

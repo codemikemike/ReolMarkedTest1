@@ -1,439 +1,254 @@
-﻿using System.Collections.ObjectModel;
-using System.ComponentModel;
-using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Documents;
-using System.Windows.Media;
-using ReolMarked.MVVM.Models;
-using ReolMarked.MVVM.Repositories;
-using ReolMarked.MVVM.Services;
-using ReolMarked.MVVM.Commands;
+﻿using ReolMarked.MVVM.Commands;
 using ReolMarked.MVVM.Infrastructure;
+using ReolMarked.MVVM.Services;
+using ReolMarked.MVVM.Services.DTOs;
+using ReolMarked.MVVM.ViewModels.Base;
+using System.Collections.ObjectModel;
+using System.Linq;
+using System.Windows;
 
 namespace ReolMarked.MVVM.ViewModels
 {
     /// <summary>
-    /// ViewModel for stregkode generering (UC3.2)
-    /// Håndterer UI logik for kunder der vil oprette stregkoder
+    /// ViewModel for stregkode generering
+    /// Kommunikerer KUN med Services
     /// </summary>
-    public class BarcodeViewModel : INotifyPropertyChanged
+    public class BarcodeViewModel : ViewModelBase
     {
-        // Private felter til services og repositories
         private readonly BarcodeService _barcodeService;
-        private readonly CustomerRepository _customerRepository;
-        private readonly RackRepository _rackRepository;
+        private readonly CustomerService _customerService;
         private readonly RentalService _rentalService;
 
-        // Private felter til UI binding
-        private string _customerPhone = "";
-        private Customer _selectedCustomer;
+        private string _customerPhone = string.Empty;
+        private CustomerViewModel _selectedCustomer;
         private int _rackNumber;
-        private ObservableCollection<Rack> _customerRacks = new();
-        private ObservableCollection<LabelRequest> _labelRequests = new();
-        private string _newProductName = "";
+        private ObservableCollection<RackViewModel> _customerRacks;
+        private ObservableCollection<LabelRequest> _labelRequests;
+        private string _newProductName = string.Empty;
         private decimal _newProductPrice;
         private int _newProductQuantity = 1;
-        private string _statusMessage = "";
-        private string _printOutput = "";
-        private BarcodeGenerationResult _lastResult;
+        private string _statusMessage = string.Empty;
+        private string _printOutput = string.Empty;
 
-        // Konstruktør - opsætter services
+        // RETTET: Parameterløs konstruktør med ServiceLocator
         public BarcodeViewModel()
         {
-            // RETTET: Brug ServiceLocator i stedet for at oprette nye instanser
-            _rackRepository = ServiceLocator.RackRepository;
-            _customerRepository = ServiceLocator.CustomerRepository;
-            _rentalService = ServiceLocator.RentalService;
+            // Hent services fra ServiceLocator
             _barcodeService = ServiceLocator.BarcodeService;
+            _customerService = ServiceLocator.CustomerService;
+            _rentalService = ServiceLocator.RentalService;
 
-            // Opret kommandoer
+            _customerRacks = new ObservableCollection<RackViewModel>();
+            _labelRequests = new ObservableCollection<LabelRequest>();
+
             CreateCommands();
-
-            // Sæt initial status
             StatusMessage = "Indtast dit telefonnummer for at finde dine reoler";
         }
 
-        // Properties til UI binding
-
-        /// <summary>
-        /// Kundens telefonnummer til at finde kunden
-        /// </summary>
+        // Properties
         public string CustomerPhone
         {
-            get { return _customerPhone; }
+            get => _customerPhone;
             set
             {
-                _customerPhone = value;
-                OnPropertyChanged(nameof(CustomerPhone));
-                OnPropertyChanged(nameof(CanFindCustomer));
+                if (SetProperty(ref _customerPhone, value))
+                    OnPropertyChanged(nameof(CanFindCustomer));
             }
         }
 
-        /// <summary>
-        /// Den fundne kunde
-        /// </summary>
-        public Customer SelectedCustomer
+        public CustomerViewModel SelectedCustomer
         {
-            get { return _selectedCustomer; }
+            get => _selectedCustomer;
             set
             {
-                _selectedCustomer = value;
-                OnPropertyChanged(nameof(SelectedCustomer));
-                OnPropertyChanged(nameof(IsCustomerSelected));
-
-                if (_selectedCustomer != null)
+                if (SetProperty(ref _selectedCustomer, value))
                 {
-                    LoadCustomerRacks();
-                    StatusMessage = $"Velkommen {_selectedCustomer.CustomerName}! Vælg hvilken reol du vil lave stregkoder til.";
-                }
-                else
-                {
-                    CustomerRacks.Clear();
-                }
-            }
-        }
-
-        /// <summary>
-        /// Valgt reolnummer
-        /// </summary>
-        public int RackNumber
-        {
-            get { return _rackNumber; }
-            set
-            {
-                _rackNumber = value;
-                OnPropertyChanged(nameof(RackNumber));
-                OnPropertyChanged(nameof(IsRackSelected));
-                OnPropertyChanged(nameof(CanAddProduct));
-
-                if (_rackNumber > 0)
-                {
-                    StatusMessage = $"Reol {_rackNumber} valgt. Tilføj produkter du vil lave stregkoder til.";
-                }
-            }
-        }
-
-        /// <summary>
-        /// Kundens reoler
-        /// </summary>
-        public ObservableCollection<Rack> CustomerRacks
-        {
-            get { return _customerRacks; }
-            set
-            {
-                _customerRacks = value;
-                OnPropertyChanged(nameof(CustomerRacks));
-            }
-        }
-
-        /// <summary>
-        /// Liste over produkter kunden vil lave stregkoder til
-        /// </summary>
-        public ObservableCollection<LabelRequest> LabelRequests
-        {
-            get { return _labelRequests; }
-            set
-            {
-                _labelRequests = value;
-                OnPropertyChanged(nameof(LabelRequests));
-                OnPropertyChanged(nameof(CanGenerateLabels));
-                OnPropertyChanged(nameof(TotalLabels));
-            }
-        }
-
-        /// <summary>
-        /// Navn på nyt produkt
-        /// </summary>
-        public string NewProductName
-        {
-            get { return _newProductName; }
-            set
-            {
-                _newProductName = value;
-                OnPropertyChanged(nameof(NewProductName));
-                OnPropertyChanged(nameof(CanAddProduct));
-            }
-        }
-
-        /// <summary>
-        /// Pris på nyt produkt
-        /// </summary>
-        public decimal NewProductPrice
-        {
-            get { return _newProductPrice; }
-            set
-            {
-                _newProductPrice = value;
-                OnPropertyChanged(nameof(NewProductPrice));
-                OnPropertyChanged(nameof(CanAddProduct));
-            }
-        }
-
-        /// <summary>
-        /// Antal af nyt produkt
-        /// </summary>
-        public int NewProductQuantity
-        {
-            get { return _newProductQuantity; }
-            set
-            {
-                _newProductQuantity = value;
-                OnPropertyChanged(nameof(NewProductQuantity));
-            }
-        }
-
-        /// <summary>
-        /// Status besked til brugeren
-        /// </summary>
-        public string StatusMessage
-        {
-            get { return _statusMessage; }
-            set
-            {
-                _statusMessage = value;
-                OnPropertyChanged(nameof(StatusMessage));
-            }
-        }
-
-        /// <summary>
-        /// Print output til stregkoder
-        /// </summary>
-        public string PrintOutput
-        {
-            get { return _printOutput; }
-            set
-            {
-                _printOutput = value;
-                OnPropertyChanged(nameof(PrintOutput));
-                OnPropertyChanged(nameof(HasPrintOutput));
-            }
-        }
-
-        /// <summary>
-        /// Sidste generering resultat
-        /// </summary>
-        public BarcodeGenerationResult LastResult
-        {
-            get { return _lastResult; }
-            set
-            {
-                _lastResult = value;
-                OnPropertyChanged(nameof(LastResult));
-            }
-        }
-
-        // Beregnet properties til UI kontrol
-
-        /// <summary>
-        /// Om der kan søges efter kunde
-        /// </summary>
-        public bool CanFindCustomer
-        {
-            get { return !string.IsNullOrEmpty(CustomerPhone); }
-        }
-
-        /// <summary>
-        /// Om der er valgt en kunde
-        /// </summary>
-        public bool IsCustomerSelected
-        {
-            get { return SelectedCustomer != null; }
-        }
-
-        /// <summary>
-        /// Om der er valgt en reol
-        /// </summary>
-        public bool IsRackSelected
-        {
-            get { return RackNumber > 0; }
-        }
-
-        /// <summary>
-        /// Om der kan tilføjes et produkt
-        /// </summary>
-        public bool CanAddProduct
-        {
-            get
-            {
-                return IsRackSelected &&
-                       !string.IsNullOrEmpty(NewProductName) &&
-                       NewProductPrice > 0;
-            }
-        }
-
-        /// <summary>
-        /// Om der kan genereres stregkoder
-        /// </summary>
-        public bool CanGenerateLabels
-        {
-            get { return LabelRequests != null && LabelRequests.Count > 0; }
-        }
-
-        /// <summary>
-        /// Om der er print output
-        /// </summary>
-        public bool HasPrintOutput
-        {
-            get { return !string.IsNullOrEmpty(PrintOutput); }
-        }
-
-        /// <summary>
-        /// Totalt antal stregkoder der vil blive oprettet
-        /// </summary>
-        public int TotalLabels
-        {
-            get
-            {
-                int total = 0;
-                if (LabelRequests != null)
-                {
-                    foreach (var request in LabelRequests)
+                    OnPropertyChanged(nameof(IsCustomerSelected));
+                    if (value != null)
                     {
-                        total += request.Quantity;
+                        LoadCustomerRacks();
+                        StatusMessage = $"Velkommen {value.Name}! Vælg hvilken reol du vil lave stregkoder til.";
+                    }
+                    else
+                    {
+                        CustomerRacks.Clear();
                     }
                 }
-                return total;
             }
         }
 
-        // Kommando properties
+        public int RackNumber
+        {
+            get => _rackNumber;
+            set
+            {
+                if (SetProperty(ref _rackNumber, value))
+                {
+                    OnPropertyChanged(nameof(IsRackSelected));
+                    OnPropertyChanged(nameof(CanAddProduct));
+                    if (value > 0)
+                        StatusMessage = $"Reol {value} valgt. Tilføj produkter.";
+                }
+            }
+        }
+
+        public ObservableCollection<RackViewModel> CustomerRacks
+        {
+            get => _customerRacks;
+            set => SetProperty(ref _customerRacks, value);
+        }
+
+        public ObservableCollection<LabelRequest> LabelRequests
+        {
+            get => _labelRequests;
+            set
+            {
+                if (SetProperty(ref _labelRequests, value))
+                {
+                    OnPropertyChanged(nameof(CanGenerateLabels));
+                    OnPropertyChanged(nameof(TotalLabels));
+                }
+            }
+        }
+
+        public string NewProductName
+        {
+            get => _newProductName;
+            set
+            {
+                if (SetProperty(ref _newProductName, value))
+                    OnPropertyChanged(nameof(CanAddProduct));
+            }
+        }
+
+        public decimal NewProductPrice
+        {
+            get => _newProductPrice;
+            set
+            {
+                if (SetProperty(ref _newProductPrice, value))
+                    OnPropertyChanged(nameof(CanAddProduct));
+            }
+        }
+
+        public int NewProductQuantity
+        {
+            get => _newProductQuantity;
+            set => SetProperty(ref _newProductQuantity, value);
+        }
+
+        public string StatusMessage
+        {
+            get => _statusMessage;
+            set => SetProperty(ref _statusMessage, value);
+        }
+
+        public string PrintOutput
+        {
+            get => _printOutput;
+            set
+            {
+                if (SetProperty(ref _printOutput, value))
+                    OnPropertyChanged(nameof(HasPrintOutput));
+            }
+        }
+
+        // Computed properties
+        public bool CanFindCustomer => !string.IsNullOrEmpty(CustomerPhone);
+        public bool IsCustomerSelected => SelectedCustomer != null;
+        public bool IsRackSelected => RackNumber > 0;
+        public bool CanAddProduct => IsRackSelected && !string.IsNullOrEmpty(NewProductName) && NewProductPrice > 0;
+        public bool CanGenerateLabels => LabelRequests != null && LabelRequests.Any();
+        public bool HasPrintOutput => !string.IsNullOrEmpty(PrintOutput);
+        public int TotalLabels => LabelRequests?.Sum(r => r.Quantity) ?? 0;
+
+        // Commands
         public RelayCommand FindCustomerCommand { get; private set; }
         public RelayCommand AddProductCommand { get; private set; }
         public RelayCommand RemoveProductCommand { get; private set; }
         public RelayCommand GenerateLabelsCommand { get; private set; }
-        public RelayCommand PrintCommand { get; private set; }
         public RelayCommand ClearAllCommand { get; private set; }
 
-        // Private metoder
-
-        /// <summary>
-        /// Indlæser kundens reoler
-        /// </summary>
         private void LoadCustomerRacks()
         {
             if (SelectedCustomer != null)
             {
-                CustomerRacks = _rentalService.GetRacksForCustomer(SelectedCustomer.CustomerId);
+                var racks = _rentalService.GetRacksForCustomer(SelectedCustomer.CustomerId);
+                CustomerRacks = new ObservableCollection<RackViewModel>(
+                    racks.Select(r => new RackViewModel(r)));
             }
         }
 
-        /// <summary>
-        /// Opretter alle kommandoer
-        /// </summary>
         private void CreateCommands()
         {
-            FindCustomerCommand = new RelayCommand(FindCustomer, CanExecuteFindCustomer);
-            AddProductCommand = new RelayCommand(AddProduct, CanExecuteAddProduct);
+            FindCustomerCommand = new RelayCommand(FindCustomer, _ => CanFindCustomer);
+            AddProductCommand = new RelayCommand(AddProduct, _ => CanAddProduct);
             RemoveProductCommand = new RelayCommand(RemoveProduct);
-            GenerateLabelsCommand = new RelayCommand(GenerateLabels, CanExecuteGenerateLabels);
-            PrintCommand = new RelayCommand(PrintLabels, CanExecutePrint);
+            GenerateLabelsCommand = new RelayCommand(GenerateLabels, _ => CanGenerateLabels);
             ClearAllCommand = new RelayCommand(ClearAll);
         }
 
-        // Kommando metoder
-
-        /// <summary>
-        /// Finder kunde baseret på telefonnummer
-        /// </summary>
         private void FindCustomer(object parameter)
         {
-            var customer = _barcodeService.FindCustomerByPhone(CustomerPhone);
+            var customer = _customerService.FindCustomerByPhone(CustomerPhone);
             if (customer != null)
             {
-                SelectedCustomer = customer;
+                SelectedCustomer = new CustomerViewModel(customer);
             }
             else
             {
-                MessageBox.Show("Kunde ikke fundet. Tjek dit telefonnummer.", "Kunde ikke fundet",
-                    MessageBoxButton.OK, MessageBoxImage.Warning);
-                StatusMessage = "Kunde ikke fundet - prøv igen med dit telefonnummer";
+                MessageBox.Show("Kunde ikke fundet.", "Fejl", MessageBoxButton.OK, MessageBoxImage.Warning);
+                StatusMessage = "Kunde ikke fundet";
             }
         }
 
-        private bool CanExecuteFindCustomer(object parameter)
-        {
-            return CanFindCustomer;
-        }
-
-        /// <summary>
-        /// Tilføjer et produkt til listen
-        /// </summary>
         private void AddProduct(object parameter)
         {
-            var newRequest = new LabelRequest
+            var request = new LabelRequest
             {
                 Name = NewProductName,
                 Price = NewProductPrice,
                 Quantity = NewProductQuantity
             };
 
-            LabelRequests.Add(newRequest);
-
-            // Vigtig: Send notification for TotalLabels så UI opdateres
+            LabelRequests.Add(request);
             OnPropertyChanged(nameof(TotalLabels));
             OnPropertyChanged(nameof(CanGenerateLabels));
 
-            // Ryd input felterne
-            NewProductName = "";
+            NewProductName = string.Empty;
             NewProductPrice = 0;
             NewProductQuantity = 1;
 
-            StatusMessage = $"Produkt tilføjet. Total: {TotalLabels} stregkoder vil blive oprettet.";
+            StatusMessage = $"Produkt tilføjet. Total: {TotalLabels} stregkoder";
         }
 
-        private bool CanExecuteAddProduct(object parameter)
-        {
-            return CanAddProduct;
-        }
-
-        /// <summary>
-        /// Fjerner et produkt fra listen
-        /// </summary>
         private void RemoveProduct(object parameter)
         {
             if (parameter is LabelRequest request)
             {
                 LabelRequests.Remove(request);
-
-                // Vigtig: Send notification for TotalLabels så UI opdateres
                 OnPropertyChanged(nameof(TotalLabels));
                 OnPropertyChanged(nameof(CanGenerateLabels));
-
-                StatusMessage = $"Produkt fjernet. Total: {TotalLabels} stregkoder vil blive oprettet.";
+                StatusMessage = $"Produkt fjernet. Total: {TotalLabels} stregkoder";
             }
         }
 
-        /// <summary>
-        /// Genererer alle stregkoder
-        /// </summary>
         private void GenerateLabels(object parameter)
         {
-            if (SelectedCustomer == null || RackNumber <= 0 || LabelRequests.Count == 0)
+            if (SelectedCustomer == null || RackNumber <= 0)
                 return;
 
-            // Konverter til List for BarcodeService
-            var requestList = new System.Collections.Generic.List<LabelRequest>();
-            foreach (var request in LabelRequests)
-            {
-                requestList.Add(request);
-            }
-
-            // Generer stregkoder via service
             var result = _barcodeService.GenerateLabelsForProducts(
                 SelectedCustomer.CustomerId,
                 RackNumber,
-                requestList);
-
-            LastResult = result;
+                LabelRequests.ToList());
 
             if (result.Success)
             {
                 PrintOutput = result.PrintOutput;
                 StatusMessage = $"Succesfuldt oprettet {result.LabelCount} stregkoder!";
-
-                // Vis bekræftelse
-                MessageBox.Show($"Stregkoder oprettet!\n\nAntal: {result.LabelCount}\nReol: {RackNumber}\n\nStregkoderne er klar til print.",
-                    "Stregkoder oprettet", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show($"Stregkoder oprettet!\n\nAntal: {result.LabelCount}\nReol: {RackNumber}",
+                    "Success", MessageBoxButton.OK, MessageBoxImage.Information);
             }
             else
             {
@@ -442,98 +257,20 @@ namespace ReolMarked.MVVM.ViewModels
             }
         }
 
-        private bool CanExecuteGenerateLabels(object parameter)
-        {
-            return CanGenerateLabels;
-        }
-
-        /// <summary>
-        /// Printer stregkoder
-        /// </summary>
-        private void PrintLabels(object parameter)
-        {
-            if (!string.IsNullOrEmpty(PrintOutput))
-            {
-                try
-                {
-                    var printDialog = new PrintDialog();
-                    if (printDialog.ShowDialog() == true)
-                    {
-                        // Opret en DrawingVisual til print
-                        var visual = new DrawingVisual();
-                        using (var context = visual.RenderOpen())
-                        {
-                            var typeface = new Typeface(new FontFamily("Consolas"), FontStyles.Normal, FontWeights.Normal, FontStretches.Normal);
-                            var fontSize = 10;
-                            var brush = Brushes.Black;
-
-                            var lines = PrintOutput.Split('\n');
-                            double yPosition = 0;
-                            double lineHeight = fontSize * 1.2;
-
-                            foreach (var line in lines)
-                            {
-                                if (!string.IsNullOrEmpty(line.Trim()))
-                                {
-                                    var formattedText = new FormattedText(
-                                        line,
-                                        System.Globalization.CultureInfo.CurrentCulture,
-                                        FlowDirection.LeftToRight,
-                                        typeface,
-                                        fontSize,
-                                        brush,
-                                        96); // DPI
-
-                                    context.DrawText(formattedText, new Point(20, yPosition));
-                                }
-                                yPosition += lineHeight;
-                            }
-                        }
-
-                        printDialog.PrintVisual(visual, "Stregkoder");
-                        StatusMessage = "Stregkoder sendt til printer!";
-                    }
-                }
-                catch (System.Exception ex)
-                {
-                    MessageBox.Show($"Fejl ved print: {ex.Message}", "Print fejl", MessageBoxButton.OK, MessageBoxImage.Error);
-                }
-            }
-        }
-
-        private bool CanExecutePrint(object parameter)
-        {
-            return HasPrintOutput;
-        }
-
-        /// <summary>
-        /// Rydder alt og starter forfra
-        /// </summary>
         private void ClearAll(object parameter)
         {
             SelectedCustomer = null;
-            CustomerPhone = "";
+            CustomerPhone = string.Empty;
             RackNumber = 0;
             CustomerRacks.Clear();
             LabelRequests.Clear();
-            NewProductName = "";
+            NewProductName = string.Empty;
             NewProductPrice = 0;
             NewProductQuantity = 1;
-            PrintOutput = "";
-            LastResult = null;
-            StatusMessage = "Indtast dit telefonnummer for at finde dine reoler";
-
-            // Send notifications for alle relevante properties
+            PrintOutput = string.Empty;
+            StatusMessage = "Indtast dit telefonnummer";
             OnPropertyChanged(nameof(TotalLabels));
             OnPropertyChanged(nameof(CanGenerateLabels));
-        }
-
-        // INotifyPropertyChanged implementation
-        public event PropertyChangedEventHandler PropertyChanged;
-
-        protected virtual void OnPropertyChanged(string propertyName)
-        {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
     }
 }

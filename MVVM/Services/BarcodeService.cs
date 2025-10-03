@@ -1,45 +1,33 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Collections.ObjectModel;
-using System.Text;
+﻿// Services/BarcodeService.cs
 using ReolMarked.MVVM.Models;
-using ReolMarked.MVVM.Repositories;
+using ReolMarked.MVVM.Repositories.Interfaces;
+using ReolMarked.MVVM.Services.DTOs;
+using ReolMarked.MVVM.Services.Results;
+using System.Text;
 
 namespace ReolMarked.MVVM.Services
 {
     /// <summary>
-    /// Service klasse til at håndtere stregkode generering og print (UC3.2)
-    /// Håndterer forretningslogikken for at oprette labels til produkter
+    /// Service til at håndtere stregkode generering
+    /// AL forretningslogik for labels
     /// </summary>
     public class BarcodeService
     {
-        // Private liste til at gemme alle labels
-        private List<Label> _labels;
-        private int _nextLabelId; // Til at tildele unikke ID'er
+        private readonly ILabelRepository _labelRepository;
+        private readonly ICustomerRepository _customerRepository;
+        private readonly IRackRepository _rackRepository;
+        private readonly RentalService _rentalService;
 
-        // Reference til andre services og repositories
-        private CustomerRepository _customerRepo;
-        private RackRepository _rackRepo;
-        private RentalService _rentalService;
-
-        // Konstruktør - opretter service
-        public BarcodeService(CustomerRepository customerRepo, RackRepository rackRepo, RentalService rentalService)
+        public BarcodeService(
+            ILabelRepository labelRepository,
+            ICustomerRepository customerRepository,
+            IRackRepository rackRepository,
+            RentalService rentalService)
         {
-            _labels = new List<Label>();
-            _nextLabelId = 1;
-            _customerRepo = customerRepo;
-            _rackRepo = rackRepo;
+            _labelRepository = labelRepository;
+            _customerRepository = customerRepository;
+            _rackRepository = rackRepository;
             _rentalService = rentalService;
-            CreateTestData();
-        }
-
-        /// <summary>
-        /// Opretter nogle test labels
-        /// </summary>
-        private void CreateTestData()
-        {
-            // Vent med at oprette test labels indtil efter RentalService har oprettet lejeaftaler
-            // Dette sker i SaleService i stedet
         }
 
         /// <summary>
@@ -47,92 +35,110 @@ namespace ReolMarked.MVVM.Services
         /// </summary>
         public bool ValidateCustomerOwnsRack(int customerId, int rackNumber)
         {
-            // Hent kundens reoler fra RentalService
             var customerRacks = _rentalService.GetRacksForCustomer(customerId);
+            return customerRacks.Any(r => r.RackNumber == rackNumber);
+        }
 
-            // Tjek om kunden har den angivne reol
-            foreach (var rack in customerRacks)
+        /// <summary>
+        /// Genererer stregkode baseret på reol og pris
+        /// Format: "REOL07-50KR-001"
+        /// </summary>
+        public string GenerateBarcode(int rackNumber, decimal price, int labelId)
+        {
+            int priceAsInt = (int)price;
+            return $"REOL{rackNumber:D2}-{priceAsInt}KR-{labelId:D3}";
+        }
+
+        /// <summary>
+        /// Parser en stregkode og returnerer reolnummer og pris
+        /// </summary>
+        public bool ParseBarcode(string barcode, out int rackNumber, out decimal price)
+        {
+            rackNumber = 0;
+            price = 0;
+
+            if (string.IsNullOrEmpty(barcode))
+                return false;
+
+            try
             {
-                if (rack.RackNumber == rackNumber)
+                // Format: "REOL07-50KR-001"
+                string[] parts = barcode.Split('-');
+                if (parts.Length >= 2)
                 {
-                    return true;
+                    // Parse reol nummer
+                    string rackPart = parts[0];
+                    if (rackPart.StartsWith("REOL"))
+                    {
+                        string rackNumberText = rackPart.Substring(4);
+                        if (int.TryParse(rackNumberText, out rackNumber))
+                        {
+                            // Parse pris
+                            string pricePart = parts[1];
+                            if (pricePart.EndsWith("KR"))
+                            {
+                                string priceText = pricePart.Substring(0, pricePart.Length - 2);
+                                if (decimal.TryParse(priceText, out price))
+                                {
+                                    return true;
+                                }
+                            }
+                        }
+                    }
                 }
+            }
+            catch
+            {
+                // Ignorer parsing fejl
             }
 
             return false;
         }
 
         /// <summary>
-        /// Finder kunde baseret på telefonnummer eller navn
-        /// </summary>
-        public Customer FindCustomerByPhone(string phoneNumber)
-        {
-            return _customerRepo.GetCustomerByPhone(phoneNumber);
-        }
-
-        /// <summary>
         /// Opretter et enkelt label for en kunde
         /// </summary>
-        public Label CreateLabelForCustomer(int customerId, int rackNumber, decimal price, string productName = "")
+        public Label CreateLabelForCustomer(int customerId, int rackNumber, decimal price)
         {
             // Valider at kunden ejer reolen
             if (!ValidateCustomerOwnsRack(customerId, rackNumber))
-            {
-                return null; // Kunde ejer ikke reolen
-            }
+                return null;
+
+            var customer = _customerRepository.GetById(customerId);
+            var rack = _rackRepository.GetByRackNumber(rackNumber);
+
+            if (customer == null || rack == null)
+                return null;
 
             // Opret nyt label
-            var newLabel = new Label
+            var label = new Label
             {
-                LabelId = _nextLabelId++,
                 RackId = rackNumber,
                 ProductPrice = price,
-                CreatedAt = DateTime.Now
+                IsVoid = false
             };
 
-            // Generer stregkode automatisk
-            newLabel.GenerateBarCode();
+            // Gem i repository (får auto-genereret ID)
+            label = _labelRepository.Add(label);
 
-            // Find kunde og reol for navigation properties
-            newLabel.Customer = _customerRepo.GetCustomerById(customerId);
-            newLabel.Rack = _rackRepo.GetRackByNumber(rackNumber);
+            // Generer stregkode EFTER vi har ID
+            label.BarCode = GenerateBarcode(rackNumber, price, label.LabelId);
+            _labelRepository.Update(label);
 
-            // Tilføj til listen
-            _labels.Add(newLabel);
+            // Fyld navigation properties
+            label.Customer = customer;
+            label.Rack = rack;
 
-            return newLabel;
+            return label;
         }
 
         /// <summary>
-        /// Opretter flere labels for samme produkt (UC3.2 bulk creation)
+        /// Opretter flere labels for forskellige produkter
         /// </summary>
-        public ObservableCollection<Label> CreateLabelsForCustomer(int customerId, int rackNumber, decimal price, int quantity, string productName = "")
-        {
-            var createdLabels = new List<Label>();
-
-            // Valider at kunden ejer reolen
-            if (!ValidateCustomerOwnsRack(customerId, rackNumber))
-            {
-                return new ObservableCollection<Label>(createdLabels); // Tom liste hvis fejl
-            }
-
-            // Opret det ønskede antal labels
-            for (int i = 0; i < quantity; i++)
-            {
-                var label = CreateLabelForCustomer(customerId, rackNumber, price, productName);
-                if (label != null)
-                {
-                    createdLabels.Add(label);
-                }
-            }
-
-            return new ObservableCollection<Label>(createdLabels);
-        }
-
-        /// <summary>
-        /// Opretter labels for en liste af forskellige produkter (UC3.2 main scenario)
-        /// </summary>
-        public BarcodeGenerationResult GenerateLabelsForProducts(int customerId, int rackNumber, List<LabelRequest> products)
+        public BarcodeGenerationResult GenerateLabelsForProducts(
+            int customerId,
+            int rackNumber,
+            List<LabelRequest> products)
         {
             var result = new BarcodeGenerationResult();
 
@@ -151,7 +157,7 @@ namespace ReolMarked.MVVM.Services
             {
                 for (int i = 0; i < product.Quantity; i++)
                 {
-                    var label = CreateLabelForCustomer(customerId, rackNumber, product.Price, product.Name);
+                    var label = CreateLabelForCustomer(customerId, rackNumber, product.Price);
                     if (label != null)
                     {
                         createdLabels.Add(label);
@@ -160,95 +166,69 @@ namespace ReolMarked.MVVM.Services
             }
 
             result.Success = true;
-            result.CreatedLabels = new ObservableCollection<Label>(createdLabels);
+            result.CreatedLabels = createdLabels;
             result.PrintOutput = GeneratePrintOutput(createdLabels);
 
             return result;
         }
 
         /// <summary>
-        /// Genererer print output til stregkoder (simulerer printer)
+        /// Genererer print output til stregkoder
         /// </summary>
         public string GeneratePrintOutput(List<Label> labels)
         {
-            var printOutput = new StringBuilder();
-            printOutput.AppendLine("=== STREGKODE PRINT OUTPUT ===");
-            printOutput.AppendLine($"Printet: {DateTime.Now:dd/MM/yyyy HH:mm}");
-            printOutput.AppendLine("==============================");
-            printOutput.AppendLine();
+            var output = new StringBuilder();
+            output.AppendLine("=== STREGKODE PRINT OUTPUT ===");
+            output.AppendLine($"Printet: {DateTime.Now:dd/MM/yyyy HH:mm}");
+            output.AppendLine("==============================");
+            output.AppendLine();
 
             foreach (var label in labels)
             {
-                const int boxWidth = 37; // Total bredde af boksen
-
+                const int boxWidth = 37;
                 string topLine = "+" + new string('-', boxWidth - 2) + "+";
                 string emptyLine = "|" + new string(' ', boxWidth - 2) + "|";
+
                 string headerContent = "  MIDDELBY REOLMARKED";
                 string headerLine = "|" + headerContent + new string(' ', boxWidth - 2 - headerContent.Length) + "|";
 
-                // Stregkode linje
                 string barcodeContent = $"  {label.BarCode}";
                 string barcodeLine = "|" + barcodeContent + new string(' ', boxWidth - 2 - barcodeContent.Length) + "|";
 
-                // Reol og pris linje
                 string reolPrisContent = $"  Reol: {label.RackId}    Pris: {label.ProductPrice:F0} kr.";
                 string reolPrisLine = "|" + reolPrisContent + new string(' ', boxWidth - 2 - reolPrisContent.Length) + "|";
 
-                // Dato linje
                 string dateContent = $"  {label.CreatedAt:dd/MM/yyyy HH:mm}";
                 string dateLine = "|" + dateContent + new string(' ', boxWidth - 2 - dateContent.Length) + "|";
 
-                printOutput.AppendLine(topLine);
-                printOutput.AppendLine(headerLine);
-                printOutput.AppendLine(emptyLine);
-                printOutput.AppendLine(barcodeLine);
-                printOutput.AppendLine(emptyLine);
-                printOutput.AppendLine(reolPrisLine);
-                printOutput.AppendLine(dateLine);
-                printOutput.AppendLine(topLine);
-                printOutput.AppendLine();
+                output.AppendLine(topLine);
+                output.AppendLine(headerLine);
+                output.AppendLine(emptyLine);
+                output.AppendLine(barcodeLine);
+                output.AppendLine(emptyLine);
+                output.AppendLine(reolPrisLine);
+                output.AppendLine(dateLine);
+                output.AppendLine(topLine);
+                output.AppendLine();
             }
 
-            printOutput.AppendLine($"Total antal labels: {labels.Count}");
-            printOutput.AppendLine("==============================");
+            output.AppendLine($"Total antal labels: {labels.Count}");
+            output.AppendLine("==============================");
 
-            return printOutput.ToString();
+            return output.ToString();
         }
 
         /// <summary>
-        /// Henter alle labels for en kunde
+        /// Markerer et label som solgt
         /// </summary>
-        public ObservableCollection<Label> GetLabelsForCustomer(int customerId)
+        public void MarkLabelAsSold(int labelId)
         {
-            var customerLabels = new List<Label>();
-
-            foreach (var label in _labels)
+            var label = _labelRepository.GetById(labelId);
+            if (label != null && !label.IsVoid)
             {
-                if (label.Customer?.CustomerId == customerId && !label.IsVoid)
-                {
-                    customerLabels.Add(label);
-                }
+                label.SoldDate = DateTime.Now;  // Ændret fra label.Sold
+                _labelRepository.Update(label);
             }
-
-            return new ObservableCollection<Label>(customerLabels);
-        }
-
-        /// <summary>
-        /// Henter alle labels for en specifik reol
-        /// </summary>
-        public ObservableCollection<Label> GetLabelsForRack(int rackNumber)
-        {
-            var rackLabels = new List<Label>();
-
-            foreach (var label in _labels)
-            {
-                if (label.RackId == rackNumber && !label.IsVoid)
-                {
-                    rackLabels.Add(label);
-                }
-            }
-
-            return new ObservableCollection<Label>(rackLabels);
         }
 
         /// <summary>
@@ -256,34 +236,13 @@ namespace ReolMarked.MVVM.Services
         /// </summary>
         public bool VoidLabel(int labelId)
         {
-            foreach (var label in _labels)
-            {
-                if (label.LabelId == labelId)
-                {
-                    label.VoidLabel(labelId);
-                    return true;
-                }
-            }
+            var label = _labelRepository.GetById(labelId);
+            if (label == null)
+                return false;
 
-            return false;
-        }
-
-        /// <summary>
-        /// Henter alle aktive labels
-        /// </summary>
-        public ObservableCollection<Label> GetAllActiveLabels()
-        {
-            var activeLabels = new List<Label>();
-
-            foreach (var label in _labels)
-            {
-                if (!label.IsVoid && !label.IsSold)
-                {
-                    activeLabels.Add(label);
-                }
-            }
-
-            return new ObservableCollection<Label>(activeLabels);
+            label.IsVoid = true;
+            _labelRepository.Update(label);
+            return true;
         }
 
         /// <summary>
@@ -291,41 +250,24 @@ namespace ReolMarked.MVVM.Services
         /// </summary>
         public Label FindLabelByBarcode(string barcode)
         {
-            // DEBUG: Log hvad vi søger efter
-            System.Diagnostics.Debug.WriteLine($"Søger efter stregkode: '{barcode}'");
-            System.Diagnostics.Debug.WriteLine($"Antal labels i system: {_labels.Count}");
-
-            foreach (var label in _labels)
-            {
-                System.Diagnostics.Debug.WriteLine($"  Sammenligner med: '{label.BarCode}'");
-
-                if (label.BarCode == barcode && !label.IsVoid)
-                {
-                    System.Diagnostics.Debug.WriteLine($"  MATCH FUNDET!");
-                    return label;
-                }
-            }
-
-            System.Diagnostics.Debug.WriteLine($"INGEN MATCH - stregkode ikke fundet");
-            return null;
+            return _labelRepository.GetByBarcode(barcode);
         }
 
         /// <summary>
-        /// Tæller antal labels for en kunde
+        /// Henter alle labels for en kunde
         /// </summary>
-        public int CountLabelsForCustomer(int customerId)
+        public IEnumerable<Label> GetLabelsForCustomer(int customerId)
         {
-            int count = 0;
+            return _labelRepository.GetByCustomerId(customerId)
+                .Where(l => !l.IsVoid);
+        }
 
-            foreach (var label in _labels)
-            {
-                if (label.Customer?.CustomerId == customerId && !label.IsVoid)
-                {
-                    count++;
-                }
-            }
-
-            return count;
+        /// <summary>
+        /// Henter alle aktive labels
+        /// </summary>
+        public IEnumerable<Label> GetAllActiveLabels()
+        {
+            return _labelRepository.GetActiveLabels();
         }
     }
 }
