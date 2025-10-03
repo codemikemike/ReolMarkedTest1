@@ -1,4 +1,4 @@
-﻿<Window x:Class="ReolMarked.MVVM.Views.FakturaWindow"
+﻿<Window x:Class="ReolMarked.MVVM.Views.InvoiceWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Middelby Reolmarked - Månedlig Afregning" 
@@ -74,7 +74,7 @@
                 <RowDefinition Height="*"/>
             </Grid.RowDefinitions>
 
-            <!-- OPDATERET Oversigt og handlinger med reolleje -->
+            <!-- Oversigt og handlinger -->
             <Grid Grid.Row="0" Margin="0,0,0,15">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="3*"/>
@@ -82,7 +82,7 @@
                     <ColumnDefinition Width="1*"/>
                 </Grid.ColumnDefinitions>
 
-                <!-- OPDATERET Totaler oversigt - nu med 5 kolonner inkl. reolleje -->
+                <!-- Totaler oversigt -->
                 <Border Grid.Column="0" Background="White" BorderBrush="#E0E0E0" BorderThickness="1">
                     <Grid Margin="15">
                         <Grid.ColumnDefinitions>
@@ -124,7 +124,7 @@
                                        HorizontalAlignment="Center"/>
                         </StackPanel>
 
-                        <!-- NYE - Reolleje -->
+                        <!-- Reolleje -->
                         <StackPanel Grid.Column="2" HorizontalAlignment="Center">
                             <TextBlock Text="Reolleje" 
                                        FontSize="11" 
@@ -154,7 +154,7 @@
                                        HorizontalAlignment="Center"/>
                         </StackPanel>
 
-                        <!-- Regninger (Røde tal) -->
+                        <!-- Regninger -->
                         <StackPanel Grid.Column="4" HorizontalAlignment="Center">
                             <TextBlock Text="Regninger" 
                                        FontSize="11" 
@@ -173,10 +173,10 @@
                     </Grid>
                 </Border>
 
-                <!-- OPDATERET Handlingsknapper med netto resultat -->
+                <!-- Handlingsknapper -->
                 <Border Grid.Column="2" Background="White" BorderBrush="#E0E0E0" BorderThickness="1">
                     <StackPanel Margin="15" VerticalAlignment="Center">
-                        <!-- NYE - Butikkens netto resultat -->
+                        <!-- Butikkens netto resultat -->
                         <Border Background="#37474F" Padding="10,8" Margin="0,0,0,15">
                             <StackPanel HorizontalAlignment="Center">
                                 <TextBlock Text="Butikkens Netto" 
@@ -192,7 +192,7 @@
                         </Border>
 
                         <Button Content="Opret Månedlige Fakturaer" 
-                                Command="{Binding CreateMonthlyFakturaerCommand}"
+                                Command="{Binding CreateMonthlyInvoicesCommand}"
                                 Background="#2E5BBA" 
                                 Foreground="White" 
                                 Height="40"
@@ -211,7 +211,7 @@
                 </Border>
             </Grid>
 
-            <!-- OPDATERET Faktura lister - nu med 4 kolonner -->
+            <!-- Faktura lister -->
             <Grid Grid.Row="1">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="1*"/>
@@ -232,15 +232,15 @@
                         </Grid.RowDefinitions>
 
                         <Border Grid.Row="0" Background="#F8F9FA" Padding="10,8">
-                            <TextBlock Text="{Binding MonthlyFakturaer.Count, StringFormat='Alle Fakturaer ({0})'}" 
+                            <TextBlock Text="{Binding MonthlyInvoices.Count, StringFormat='Alle Fakturaer ({0})'}" 
                                        FontSize="14" 
                                        FontWeight="SemiBold" 
                                        Foreground="#333"/>
                         </Border>
 
                         <ListBox Grid.Row="1" 
-                                 ItemsSource="{Binding MonthlyFakturaer}"
-                                 SelectedItem="{Binding SelectedFaktura}"
+                                 ItemsSource="{Binding MonthlyInvoices}"
+                                 SelectedItem="{Binding SelectedInvoice}"
                                  Background="Transparent"
                                  BorderThickness="0"
                                  Margin="8">
@@ -263,7 +263,7 @@
                                             <TextBlock Text="{Binding NextMonthRentFormatted, StringFormat='Leje: {0}'}" 
                                                        FontSize="10" 
                                                        Foreground="#9C27B0"/>
-                                            <TextBlock Text="{Binding NetAmountDisplayFormatted}" 
+                                            <TextBlock Text="{Binding NetAmountFormatted}" 
                                                        FontSize="12" 
                                                        FontWeight="Bold">
                                                 <TextBlock.Style>
@@ -291,7 +291,7 @@
                     </Grid>
                 </Border>
 
-                <!-- Udbetalinger (Positive beløb) -->
+                <!-- Udbetalinger -->
                 <Border Grid.Column="2" Background="White" BorderBrush="#E0E0E0" BorderThickness="1">
                     <Grid>
                         <Grid.RowDefinitions>
@@ -300,14 +300,14 @@
                         </Grid.RowDefinitions>
 
                         <Border Grid.Row="0" Background="#E8F5E8" Padding="10,8">
-                            <TextBlock Text="{Binding PayoutFakturaer.Count, StringFormat='Udbetalinger ({0})'}" 
+                            <TextBlock Text="{Binding PayoutInvoices.Count, StringFormat='Udbetalinger ({0})'}" 
                                        FontSize="14" 
                                        FontWeight="SemiBold" 
                                        Foreground="#4CAF50"/>
                         </Border>
 
                         <ListBox Grid.Row="1" 
-                                 ItemsSource="{Binding PayoutFakturaer}"
+                                 ItemsSource="{Binding PayoutInvoices}"
                                  Background="Transparent"
                                  BorderThickness="0"
                                  Margin="8">
@@ -362,7 +362,7 @@
                     </Grid>
                 </Border>
 
-                <!-- Regninger (Negative beløb - "Røde tal") -->
+                <!-- Regninger -->
                 <Border Grid.Column="4" Background="White" BorderBrush="#E0E0E0" BorderThickness="1">
                     <Grid>
                         <Grid.RowDefinitions>
@@ -371,14 +371,14 @@
                         </Grid.RowDefinitions>
 
                         <Border Grid.Row="0" Background="#FFEBEE" Padding="10,8">
-                            <TextBlock Text="{Binding BillFakturaer.Count, StringFormat='Regninger ({0})'}" 
+                            <TextBlock Text="{Binding BillInvoices.Count, StringFormat='Regninger ({0})'}" 
                                        FontSize="14" 
                                        FontWeight="SemiBold" 
                                        Foreground="#F44336"/>
                         </Border>
 
                         <ListBox Grid.Row="1" 
-                                 ItemsSource="{Binding BillFakturaer}"
+                                 ItemsSource="{Binding BillInvoices}"
                                  Background="Transparent"
                                  BorderThickness="0"
                                  Margin="8">
@@ -410,13 +410,10 @@
                                                        Foreground="#666"/>
 
                                             <TextBlock Grid.Row="2"
+                                                       Text="{Binding NetAmountFormatted}"
                                                        FontSize="14" 
                                                        FontWeight="Bold"
-                                                       Foreground="#F44336">
-                                                <TextBlock.Text>
-                                                    <Binding Path="NetAmount" StringFormat="{}{0:C0}"/>
-                                                </TextBlock.Text>
-                                            </TextBlock>
+                                                       Foreground="#F44336"/>
 
                                             <Button Grid.Row="3"
                                                     Content="Send Regning"
@@ -436,7 +433,7 @@
                     </Grid>
                 </Border>
 
-                <!-- NYE - Lige Op (Nul beløb) -->
+                <!-- Lige Op -->
                 <Border Grid.Column="6" Background="White" BorderBrush="#E0E0E0" BorderThickness="1">
                     <Grid>
                         <Grid.RowDefinitions>
@@ -445,14 +442,14 @@
                         </Grid.RowDefinitions>
 
                         <Border Grid.Row="0" Background="#F0F0F0" Padding="10,8">
-                            <TextBlock Text="{Binding ZeroAmountFakturaer.Count, StringFormat='Lige Op ({0})'}" 
+                            <TextBlock Text="{Binding ZeroAmountInvoices.Count, StringFormat='Lige Op ({0})'}" 
                                        FontSize="14" 
                                        FontWeight="SemiBold" 
                                        Foreground="#666"/>
                         </Border>
 
                         <ListBox Grid.Row="1" 
-                                 ItemsSource="{Binding ZeroAmountFakturaer}"
+                                 ItemsSource="{Binding ZeroAmountInvoices}"
                                  Background="Transparent"
                                  BorderThickness="0"
                                  Margin="8">
@@ -489,7 +486,7 @@
             </Grid>
         </Grid>
 
-        <!-- Footer - Status -->
+        <!-- Footer -->
         <Border Grid.Row="2" 
                 Background="#37474F" 
                 Margin="0,15,0,0"

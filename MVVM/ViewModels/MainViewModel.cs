@@ -1,438 +1,391 @@
-﻿using System.Collections.ObjectModel;
-using System.ComponentModel;
-using System.Windows;
-using ReolMarked.MVVM.Models;
-using ReolMarked.MVVM.Repositories;
+﻿using ReolMarked.MVVM.Commands;
+using ReolMarked.MVVM.Data;
+using ReolMarked.MVVM.Infrastructure;
+using ReolMarked.MVVM.Repositories.Interfaces;
 using ReolMarked.MVVM.Services;
-using ReolMarked.MVVM.Commands;
+using ReolMarked.MVVM.ViewModels.Base;
+using System;
+using System.Collections.ObjectModel;
+using System.Linq;
+using System.Windows;
 
 namespace ReolMarked.MVVM.ViewModels
 {
-    /// <summary>
-    /// Hoved ViewModel for ReolMarked applikationen
-    /// Håndterer al logik mellem UI og data - nu med UC2 funktionalitet
-    /// </summary>
-    public class MainViewModel : INotifyPropertyChanged
+    public class MainViewModel : ViewModelBase
     {
-        // Private felter til repositories og services
-        private readonly RackRepository _rackRepository;
-        private readonly CustomerRepository _customerRepository;
         private readonly RentalService _rentalService;
+        private readonly CustomerService _customerService;
+        private readonly IRackRepository _rackRepository;
+        private readonly IWindowService _windowService;
 
-        // Private felter til UI binding
-        private ObservableCollection<Rack> _availableRacks = new();
-        private ObservableCollection<Customer> _customers = new();
-        private ObservableCollection<Rack> _customerRacks = new(); // NYT - til UC2
-        private ObservableCollection<Rack> _neighborRacks = new(); // NYT - til UC2
+        // Observable collections
+        private ObservableCollection<RackViewModel> _availableRacks;
+        private ObservableCollection<CustomerViewModel> _customers;
+        private ObservableCollection<RackViewModel> _customerRacks;
+        private ObservableCollection<RackViewModel> _neighborRacks;
 
-        private Rack? _selectedRack;
-        private Customer? _selectedCustomer;
-        private Rack? _selectedCustomerRack; // NYT - til UC2
+        // Selected items
+        private RackViewModel _selectedRack;
+        private CustomerViewModel _selectedCustomer;
+        private RackViewModel _selectedCustomerRack;
 
-        private string _newCustomerName = "";
-        private string _newCustomerPhone = "";
-        private string _newCustomerEmail = "";
-        private string _newCustomerAddress = "";
-        private string _statusMessage = "";
+        // Form fields
+        private string _newCustomerName = string.Empty;
+        private string _newCustomerPhone = string.Empty;
+        private string _newCustomerEmail = string.Empty;
+        private string _newCustomerAddress = string.Empty;
+        private string _statusMessage = string.Empty;
 
-        // Konstruktør - opsætter repositories og services
         public MainViewModel()
         {
-            // Opret repositories
-            _rackRepository = new RackRepository();
-            _customerRepository = new CustomerRepository();
+            // Hent services fra ServiceLocator
+            _rentalService = ServiceLocator.RentalService;
+            _customerService = ServiceLocator.CustomerService;
+            _rackRepository = ServiceLocator.RackRepository;
+            _windowService = ServiceLocator.WindowService;
 
-            // Opret service med dependencies
-            _rentalService = new RentalService(_customerRepository, _rackRepository);
+            // Debug: Tjek om repositories er oprettet
+            System.Diagnostics.Debug.WriteLine($"RackRepository exists: {_rackRepository != null}");
+            System.Diagnostics.Debug.WriteLine($"CustomerService exists: {_customerService != null}");
 
-            // Indlæs initial data
-            LoadData();
+            // Initialiser collections
+            _availableRacks = new ObservableCollection<RackViewModel>();
+            _customers = new ObservableCollection<CustomerViewModel>();
+            _customerRacks = new ObservableCollection<RackViewModel>();
+            _neighborRacks = new ObservableCollection<RackViewModel>();
 
-            // Opret kommandoer til knapper
+            // Opret commands
             CreateCommands();
 
-            // Sæt initial status
-            StatusMessage = "Klar til at hjælpe kunder";
+            // Initialiser test data
+            LoadTestData();
+
+            // Debug: Tjek om data blev oprettet
+            var allRacks = _rackRepository.GetAll().ToList();
+            System.Diagnostics.Debug.WriteLine($"Total racks in repository: {allRacks.Count}");
+            System.Diagnostics.Debug.WriteLine($"Available racks: {allRacks.Count(r => r.IsAvailable)}");
+
+            // Load data EFTER test data er oprettet
+            LoadData();
+
+            // Debug: Tjek collections
+            System.Diagnostics.Debug.WriteLine($"AvailableRacks in collection: {AvailableRacks.Count}");
+            System.Diagnostics.Debug.WriteLine($"Customers in collection: {Customers.Count}");
+
+            StatusMessage = "Klar til reol administration";
         }
 
-        // Properties til UI binding
-
-        /// <summary>
-        /// Liste over ledige reoler (som Mettes ledige kasse)
-        /// </summary>
-        public ObservableCollection<Rack> AvailableRacks
+        // Properties
+        public ObservableCollection<RackViewModel> AvailableRacks
         {
-            get { return _availableRacks; }
-            set
-            {
-                _availableRacks = value;
-                OnPropertyChanged(nameof(AvailableRacks));
-            }
+            get => _availableRacks;
+            set => SetProperty(ref _availableRacks, value);
         }
 
-        /// <summary>
-        /// Liste over alle kunder
-        /// </summary>
-        public ObservableCollection<Customer> Customers
+        public ObservableCollection<CustomerViewModel> Customers
         {
-            get { return _customers; }
-            set
-            {
-                _customers = value;
-                OnPropertyChanged(nameof(Customers));
-            }
+            get => _customers;
+            set => SetProperty(ref _customers, value);
         }
 
-        /// <summary>
-        /// NYT - Liste over reoler som den valgte kunde allerede lejer
-        /// </summary>
-        public ObservableCollection<Rack> CustomerRacks
+        public ObservableCollection<RackViewModel> CustomerRacks
         {
-            get { return _customerRacks; }
-            set
-            {
-                _customerRacks = value;
-                OnPropertyChanged(nameof(CustomerRacks));
-            }
+            get => _customerRacks;
+            set => SetProperty(ref _customerRacks, value);
         }
 
-        /// <summary>
-        /// NYT - Liste over ledige nabo-reoler til kundens valgte reol
-        /// </summary>
-        public ObservableCollection<Rack> NeighborRacks
+        public ObservableCollection<RackViewModel> NeighborRacks
         {
-            get { return _neighborRacks; }
-            set
-            {
-                _neighborRacks = value;
-                OnPropertyChanged(nameof(NeighborRacks));
-            }
+            get => _neighborRacks;
+            set => SetProperty(ref _neighborRacks, value);
         }
 
-        /// <summary>
-        /// Den reol som brugeren har valgt fra ledige reoler
-        /// </summary>
-        public Rack? SelectedRack
+        public RackViewModel SelectedRack
         {
-            get { return _selectedRack; }
+            get => _selectedRack;
             set
             {
-                _selectedRack = value;
-                OnPropertyChanged(nameof(SelectedRack));
-                OnPropertyChanged(nameof(IsRackSelected));
-                OnPropertyChanged(nameof(CanCreateContract));
-
-                // Opdater status besked
-                if (_selectedRack != null)
+                if (SetProperty(ref _selectedRack, value))
                 {
-                    StatusMessage = $"Valgt reol {_selectedRack.RackNumber} - {_selectedRack.Location}";
+                    OnPropertyChanged(nameof(IsRackSelected));
+                    OnPropertyChanged(nameof(CanCreateContract));
+                    if (value != null)
+                        StatusMessage = $"Valgt reol {value.RackNumber} - {value.Location}";
                 }
             }
         }
 
-        /// <summary>
-        /// Den kunde som brugeren har valgt
-        /// </summary>
-        public Customer? SelectedCustomer
+        public CustomerViewModel SelectedCustomer
         {
-            get { return _selectedCustomer; }
+            get => _selectedCustomer;
             set
             {
-                _selectedCustomer = value;
-                OnPropertyChanged(nameof(SelectedCustomer));
-                OnPropertyChanged(nameof(IsCustomerSelected));
-                OnPropertyChanged(nameof(CanCreateContract));
+                if (SetProperty(ref _selectedCustomer, value))
+                {
+                    OnPropertyChanged(nameof(IsCustomerSelected));
+                    OnPropertyChanged(nameof(CanCreateContract));
 
-                // NYT - Når kunde vælges, hent deres eksisterende reoler
-                if (_selectedCustomer != null)
-                {
-                    LoadCustomerRacks();
-                    StatusMessage = $"Valgt kunde: {_selectedCustomer.CustomerName}";
-                }
-                else
-                {
-                    CustomerRacks.Clear();
-                    NeighborRacks.Clear();
+                    if (value != null)
+                    {
+                        LoadCustomerRacks();
+                        StatusMessage = $"Valgt kunde: {value.Name}";
+                    }
+                    else
+                    {
+                        CustomerRacks.Clear();
+                        NeighborRacks.Clear();
+                    }
                 }
             }
         }
 
-        /// <summary>
-        /// NYT - Den reol kunden har valgt som reference for nabo-søgning
-        /// </summary>
-        public Rack? SelectedCustomerRack
+        public RackViewModel SelectedCustomerRack
         {
-            get { return _selectedCustomerRack; }
+            get => _selectedCustomerRack;
             set
             {
-                _selectedCustomerRack = value;
-                OnPropertyChanged(nameof(SelectedCustomerRack));
-                OnPropertyChanged(nameof(IsCustomerRackSelected));
+                if (SetProperty(ref _selectedCustomerRack, value))
+                {
+                    OnPropertyChanged(nameof(IsCustomerRackSelected));
 
-                // Når kunde vælger en af sine reoler, find nabo-reoler
-                if (_selectedCustomerRack != null && _selectedCustomer != null)
-                {
-                    LoadNeighborRacks();
-                    StatusMessage = $"Viser nabo-reoler til reol {_selectedCustomerRack.RackNumber}";
-                }
-                else
-                {
-                    NeighborRacks.Clear();
+                    if (value != null && SelectedCustomer != null)
+                    {
+                        LoadNeighborRacks();
+                        StatusMessage = $"Viser nabo-reoler til reol {value.RackNumber}";
+                    }
+                    else
+                    {
+                        NeighborRacks.Clear();
+                    }
                 }
             }
         }
 
-        // Eksisterende properties...
         public string NewCustomerName
         {
-            get { return _newCustomerName; }
+            get => _newCustomerName;
             set
             {
-                _newCustomerName = value;
-                OnPropertyChanged(nameof(NewCustomerName));
-                OnPropertyChanged(nameof(CanCreateCustomer));
+                if (SetProperty(ref _newCustomerName, value))
+                    OnPropertyChanged(nameof(CanCreateCustomer));
             }
         }
 
         public string NewCustomerPhone
         {
-            get { return _newCustomerPhone; }
+            get => _newCustomerPhone;
             set
             {
-                _newCustomerPhone = value;
-                OnPropertyChanged(nameof(NewCustomerPhone));
-                OnPropertyChanged(nameof(CanCreateCustomer));
+                if (SetProperty(ref _newCustomerPhone, value))
+                    OnPropertyChanged(nameof(CanCreateCustomer));
             }
         }
 
         public string NewCustomerEmail
         {
-            get { return _newCustomerEmail; }
-            set
-            {
-                _newCustomerEmail = value;
-                OnPropertyChanged(nameof(NewCustomerEmail));
-            }
+            get => _newCustomerEmail;
+            set => SetProperty(ref _newCustomerEmail, value);
         }
 
         public string NewCustomerAddress
         {
-            get { return _newCustomerAddress; }
-            set
-            {
-                _newCustomerAddress = value;
-                OnPropertyChanged(nameof(NewCustomerAddress));
-            }
+            get => _newCustomerAddress;
+            set => SetProperty(ref _newCustomerAddress, value);
         }
 
         public string StatusMessage
         {
-            get { return _statusMessage; }
-            set
-            {
-                _statusMessage = value;
-                OnPropertyChanged(nameof(StatusMessage));
-            }
+            get => _statusMessage;
+            set => SetProperty(ref _statusMessage, value);
         }
 
-        // Beregnet properties til UI kontrol
-        public bool IsRackSelected
-        {
-            get { return SelectedRack != null; }
-        }
+        // Computed properties
+        public bool IsRackSelected => SelectedRack != null;
+        public bool IsCustomerSelected => SelectedCustomer != null;
+        public bool IsCustomerRackSelected => SelectedCustomerRack != null;
 
-        public bool IsCustomerSelected
-        {
-            get { return SelectedCustomer != null; }
-        }
+        public bool CanCreateCustomer =>
+            !string.IsNullOrEmpty(NewCustomerName) &&
+            !string.IsNullOrEmpty(NewCustomerPhone);
 
-        /// <summary>
-        /// NYT - Om der er valgt en kunde-reol for nabo-søgning
-        /// </summary>
-        public bool IsCustomerRackSelected
-        {
-            get { return SelectedCustomerRack != null; }
-        }
+        public bool CanCreateContract =>
+            IsCustomerSelected &&
+            (IsRackSelected || (NeighborRacks != null && NeighborRacks.Any()));
 
-        public bool CanCreateCustomer
-        {
-            get
-            {
-                return !string.IsNullOrEmpty(NewCustomerName) &&
-                       !string.IsNullOrEmpty(NewCustomerPhone);
-            }
-        }
-
-        /// <summary>
-        /// Opdateret - kan oprette kontrakt enten fra ledige reoler eller nabo-reoler
-        /// </summary>
-        public bool CanCreateContract
-        {
-            get
-            {
-                return IsCustomerSelected && (IsRackSelected || (NeighborRacks != null && NeighborRacks.Count > 0));
-            }
-        }
-
-        // Kommando properties til knapper
+        // Commands
         public RelayCommand ShowAvailableRacksCommand { get; private set; }
         public RelayCommand ShowRacksWithoutHangerBarCommand { get; private set; }
         public RelayCommand CreateCustomerCommand { get; private set; }
         public RelayCommand CreateContractCommand { get; private set; }
         public RelayCommand ClearSelectionCommand { get; private set; }
-        public RelayCommand ShowNeighborRacksCommand { get; private set; } // NYT - til UC2
+        public RelayCommand ShowNeighborRacksCommand { get; private set; }
+        public RelayCommand OpenBarcodeWindowCommand { get; private set; }
+        public RelayCommand OpenScannerWindowCommand { get; private set; }
+        public RelayCommand OpenInvoiceWindowCommand { get; private set; }
+        public RelayCommand OpenTerminationWindowCommand { get; private set; }
 
-        // Private metoder
-
-        /// <summary>
-        /// Indlæser data fra repositories
-        /// </summary>
-        private void LoadData()
-        {
-            AvailableRacks = _rackRepository.GetAvailableRacks();
-            Customers = _customerRepository.GetActiveCustomers();
-        }
-
-        /// <summary>
-        /// NYT - Indlæser den valgte kundes eksisterende reoler
-        /// </summary>
-        private void LoadCustomerRacks()
-        {
-            if (SelectedCustomer != null)
-            {
-                CustomerRacks = _rentalService.GetRacksForCustomer(SelectedCustomer.CustomerId);
-            }
-        }
-
-        /// <summary>
-        /// NYT - Indlæser nabo-reoler til kundens valgte reol
-        /// </summary>
-        private void LoadNeighborRacks()
-        {
-            if (SelectedCustomerRack != null)
-            {
-                NeighborRacks = _rackRepository.GetAvailableNeighborRacks(SelectedCustomerRack.RackNumber);
-            }
-        }
-
-        /// <summary>
-        /// Opretter alle kommandoer til knapper
-        /// </summary>
         private void CreateCommands()
         {
             ShowAvailableRacksCommand = new RelayCommand(ShowAvailableRacks);
             ShowRacksWithoutHangerBarCommand = new RelayCommand(ShowRacksWithoutHangerBar);
-            CreateCustomerCommand = new RelayCommand(CreateCustomer, CanExecuteCreateCustomer);
-            CreateContractCommand = new RelayCommand(CreateContract, CanExecuteCreateContract);
+            CreateCustomerCommand = new RelayCommand(CreateCustomer, _ => CanCreateCustomer);
+            CreateContractCommand = new RelayCommand(CreateContract, _ => CanCreateContract);
             ClearSelectionCommand = new RelayCommand(ClearSelection);
-            ShowNeighborRacksCommand = new RelayCommand(ShowNeighborRacks); // NYT
+            ShowNeighborRacksCommand = new RelayCommand(ShowNeighborRacks);
+
+            OpenBarcodeWindowCommand = new RelayCommand(_ => _windowService.ShowBarcodeWindow());
+            OpenScannerWindowCommand = new RelayCommand(_ => _windowService.ShowScannerWindow());
+            OpenInvoiceWindowCommand = new RelayCommand(_ => _windowService.ShowInvoiceWindow());
+            OpenTerminationWindowCommand = new RelayCommand(_ => _windowService.ShowTerminationWindow());
         }
 
-        // Kommando metoder
-
-        private void ShowAvailableRacks(object? parameter)
+        private void LoadTestData()
         {
-            AvailableRacks = _rackRepository.GetAvailableRacks();
-            StatusMessage = $"Viser {AvailableRacks.Count} ledige reoler";
+            TestDataInitializer.InitializeTestData();
+
+            // Debug output for at verificere data er loaded
+            System.Diagnostics.Debug.WriteLine(TestDataInitializer.GetTestDataSummary());
         }
 
-        private void ShowRacksWithoutHangerBar(object? parameter)
+        private void LoadData()
         {
-            AvailableRacks = _rackRepository.GetAvailableRacksWithoutHangerBar();
-            StatusMessage = $"Viser {AvailableRacks.Count} ledige reoler uden bøjlestang";
+            // Hent ledige reoler
+            var racks = _rackRepository.GetAll().Where(r => r.IsAvailable);
+            AvailableRacks = new ObservableCollection<RackViewModel>(
+                racks.Select(r => new RackViewModel(r)));
+
+            // Hent aktive kunder
+            var customers = _customerService.GetActiveCustomers();
+            Customers = new ObservableCollection<CustomerViewModel>(
+                customers.Select(c => new CustomerViewModel(c)));
+
+            // Debug output
+            System.Diagnostics.Debug.WriteLine($"Loaded {AvailableRacks.Count} available racks");
+            System.Diagnostics.Debug.WriteLine($"Loaded {Customers.Count} customers");
         }
 
-        /// <summary>
-        /// NYT - Viser nabo-reoler for alle kundens reoler
-        /// </summary>
-        private void ShowNeighborRacks(object? parameter)
+        private void LoadCustomerRacks()
         {
             if (SelectedCustomer != null)
             {
-                NeighborRacks = _rentalService.GetAvailableNeighborRacksForCustomer(SelectedCustomer.CustomerId);
-                StatusMessage = $"Viser {NeighborRacks.Count} ledige nabo-reoler";
+                var racks = _rentalService.GetRacksForCustomer(SelectedCustomer.CustomerId);
+                CustomerRacks = new ObservableCollection<RackViewModel>(
+                    racks.Select(r => new RackViewModel(r)));
             }
         }
 
-        private void CreateCustomer(object? parameter)
+        private void LoadNeighborRacks()
         {
-            var newCustomer = _customerRepository.AddCustomer(
-                NewCustomerName,
-                NewCustomerPhone,
-                NewCustomerEmail,
-                NewCustomerAddress);
+            if (SelectedCustomerRack != null)
+            {
+                var neighbors = _rackRepository.GetAll()
+                    .Where(r => r.IsAvailable &&
+                                Math.Abs(r.RackNumber - SelectedCustomerRack.RackNumber) == 1);
 
-            Customers = _customerRepository.GetActiveCustomers();
-            SelectedCustomer = newCustomer;
-            ClearCustomerForm();
-            StatusMessage = $"Oprettet kunde: {newCustomer.CustomerName}";
+                NeighborRacks = new ObservableCollection<RackViewModel>(
+                    neighbors.Select(r => new RackViewModel(r)));
+            }
         }
 
-        private bool CanExecuteCreateCustomer(object? parameter)
+        private void ShowAvailableRacks(object parameter)
         {
-            return CanCreateCustomer;
+            var racks = _rackRepository.GetAll().Where(r => r.IsAvailable);
+            AvailableRacks = new ObservableCollection<RackViewModel>(
+                racks.Select(r => new RackViewModel(r)));
+            StatusMessage = $"Viser {AvailableRacks.Count} ledige reoler";
         }
 
-        /// <summary>
-        /// Opdateret - bruger nu RentalService til at oprette kontrakt
-        /// </summary>
-        private void CreateContract(object? parameter)
+        private void ShowRacksWithoutHangerBar(object parameter)
+        {
+            var racks = _rackRepository.GetAll()
+                .Where(r => r.IsAvailable && !r.HasHangerBar);
+            AvailableRacks = new ObservableCollection<RackViewModel>(
+                racks.Select(r => new RackViewModel(r)));
+            StatusMessage = $"Viser {AvailableRacks.Count} reoler uden bøjlestang";
+        }
+
+        private void CreateCustomer(object parameter)
+        {
+            try
+            {
+                var newCustomer = _customerService.CreateCustomer(
+                    NewCustomerName,
+                    NewCustomerPhone,
+                    NewCustomerEmail,
+                    NewCustomerAddress);
+
+                var customers = _customerService.GetActiveCustomers();
+                Customers = new ObservableCollection<CustomerViewModel>(
+                    customers.Select(c => new CustomerViewModel(c)));
+
+                SelectedCustomer = Customers.FirstOrDefault(c => c.CustomerId == newCustomer.CustomerId);
+                ClearCustomerForm();
+                StatusMessage = $"Oprettet kunde: {newCustomer.Name}";
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message, "Fejl", MessageBoxButton.OK, MessageBoxImage.Warning);
+                StatusMessage = "Fejl ved oprettelse af kunde";
+            }
+        }
+
+        private void CreateContract(object parameter)
         {
             if (SelectedCustomer == null)
                 return;
 
-            Rack rackToRent = null;
+            try
+            {
+                int rackId = 0;
+                if (SelectedRack != null)
+                {
+                    rackId = SelectedRack.RackId;
+                }
+                else if (NeighborRacks != null && NeighborRacks.Any())
+                {
+                    rackId = NeighborRacks.First().RackId;
+                }
 
-            // Determine which rack to rent
-            if (SelectedRack != null)
-            {
-                rackToRent = SelectedRack;
-            }
-            else if (NeighborRacks != null && NeighborRacks.Count > 0)
-            {
-                // For now, take the first neighbor rack
-                // In a real UI, user would select from NeighborRacks
-                rackToRent = NeighborRacks[0];
-            }
+                if (rackId == 0)
+                    return;
 
-            if (rackToRent != null)
-            {
                 var agreement = _rentalService.CreateRentalAgreement(
-                    SelectedCustomer,
-                    rackToRent,
-                    System.DateTime.Now);
+                    SelectedCustomer.CustomerId,
+                    rackId,
+                    DateTime.Now);
 
                 if (agreement != null)
                 {
-                    // Opdater data
-                    AvailableRacks = _rackRepository.GetAvailableRacks();
+                    LoadData();
                     LoadCustomerRacks();
-                    LoadNeighborRacks();
 
-                    // Vis bekræftelse
-                    string message = $"Lejeaftale oprettet!\n" +
-                                   $"Kunde: {SelectedCustomer.CustomerName}\n" +
-                                   $"Reol: {rackToRent.RackNumber}\n" +
-                                   $"Månedlig leje: {agreement.PriceFormatted}";
-
-                    MessageBox.Show(message, "Lejeaftale oprettet", MessageBoxButton.OK, MessageBoxImage.Information);
+                    MessageBox.Show(
+                        $"Lejeaftale oprettet!\nKunde: {SelectedCustomer.Name}\nReol: {agreement.RackId}\nMånedlig leje: {agreement.MonthlyRent:C0}",
+                        "Lejeaftale oprettet",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Information);
 
                     ClearSelection(null);
                     StatusMessage = "Lejeaftale oprettet succesfuldt";
                 }
-                else
-                {
-                    StatusMessage = "Fejl: Kunne ikke oprette lejeaftale";
-                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message, "Fejl", MessageBoxButton.OK, MessageBoxImage.Error);
+                StatusMessage = "Fejl ved oprettelse af lejeaftale";
             }
         }
 
-        private bool CanExecuteCreateContract(object? parameter)
+        private void ShowNeighborRacks(object parameter)
         {
-            return CanCreateContract;
+            if (SelectedCustomer != null && SelectedCustomerRack != null)
+            {
+                LoadNeighborRacks();
+                StatusMessage = $"Viser {NeighborRacks.Count} ledige nabo-reoler";
+            }
         }
 
-        private void ClearSelection(object? parameter)
+        private void ClearSelection(object parameter)
         {
             SelectedRack = null;
             SelectedCustomer = null;
@@ -445,18 +398,10 @@ namespace ReolMarked.MVVM.ViewModels
 
         private void ClearCustomerForm()
         {
-            NewCustomerName = "";
-            NewCustomerPhone = "";
-            NewCustomerEmail = "";
-            NewCustomerAddress = "";
-        }
-
-        // INotifyPropertyChanged implementation
-        public event PropertyChangedEventHandler? PropertyChanged;
-
-        protected virtual void OnPropertyChanged(string propertyName)
-        {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+            NewCustomerName = string.Empty;
+            NewCustomerPhone = string.Empty;
+            NewCustomerEmail = string.Empty;
+            NewCustomerAddress = string.Empty;
         }
     }
 }

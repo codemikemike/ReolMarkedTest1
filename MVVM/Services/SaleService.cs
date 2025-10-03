@@ -1,86 +1,60 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
+using System.Linq;
 using ReolMarked.MVVM.Models;
+using ReolMarked.MVVM.Repositories.Interfaces;
+using ReolMarked.MVVM.Services.Results;
 
 namespace ReolMarked.MVVM.Services
 {
     /// <summary>
-    /// Service klasse til at håndtere salg (UC3.1)
-    /// Håndterer scanner funktionalitet og salgsprocessen som Jonas bruger
+    /// Service til at håndtere salg
+    /// AL forretningslogik for scanner og salgsprocessen
     /// </summary>
     public class SaleService
     {
-        // Private lister til at gemme salgsdata
-        private List<Sale> _sales;
-        private List<RackSale> _rackSales;
-        private int _nextSaleId;
-        private int _nextSaleLineId;
-        private int _nextRackSaleId;
+        private readonly ISaleRepository _saleRepository;
+        private readonly ISaleLineRepository _saleLineRepository;
+        private readonly IRackSaleRepository _rackSaleRepository;
+        private readonly BarcodeService _barcodeService;
 
-        // Reference til andre services
-        private BarcodeService _barcodeService;
-
-        // Konstruktør - opretter service
-        public SaleService(BarcodeService barcodeService)
+        public SaleService(
+            ISaleRepository saleRepository,
+            ISaleLineRepository saleLineRepository,
+            IRackSaleRepository rackSaleRepository,
+            BarcodeService barcodeService)
         {
-            _sales = new List<Sale>();
-            _rackSales = new List<RackSale>();
-            _nextSaleId = 1;
-            _nextSaleLineId = 1;
-            _nextRackSaleId = 1;
+            _saleRepository = saleRepository;
+            _saleLineRepository = saleLineRepository;
+            _rackSaleRepository = rackSaleRepository;
             _barcodeService = barcodeService;
-
-            CreateTestBarcodes();
         }
 
         /// <summary>
-        /// Opretter test stregkoder så scanner systemet har noget at arbejde med
-        /// NU FLYTTET HERTIL - efter RentalService har oprettet lejeaftaler
-        /// </summary>
-        private void CreateTestBarcodes()
-        {
-            // Opret test stregkoder så scanner systemet har noget at scanne
-            var peter = _barcodeService.FindCustomerByPhone("12345678");
-            if (peter != null)
-            {
-                // Peter har reol 7 og 42 fra RentalService.CreateTestData()
-                _barcodeService.CreateLabelForCustomer(peter.CustomerId, 7, 125.00m, "Keramikskål");
-                _barcodeService.CreateLabelForCustomer(peter.CustomerId, 7, 45.00m, "Vintage bog");
-                _barcodeService.CreateLabelForCustomer(peter.CustomerId, 42, 200.00m, "Antik vase");
-            }
-
-            var mette = _barcodeService.FindCustomerByPhone("23456789");
-            if (mette != null)
-            {
-                // Mette har reol 15 fra RentalService.CreateTestData()
-                _barcodeService.CreateLabelForCustomer(mette.CustomerId, 15, 85.00m, "Porcelænsfigur");
-                _barcodeService.CreateLabelForCustomer(mette.CustomerId, 15, 150.00m, "Vintage taske");
-            }
-        }
-
-        /// <summary>
-        /// Starter et nyt salg (når Aya kommer til kassen)
+        /// Starter et nyt salg
         /// </summary>
         public Sale StartNewSale()
         {
-            var newSale = new Sale
+            var sale = new Sale
             {
-                SaleId = _nextSaleId++,
-                DatoTid = DateTime.Now,
-                BetalingsForm = "Kontant"
+                SaleDateTime = DateTime.Now,
+                PaymentMethod = PaymentMethod.Cash,
+                IsCompleted = false,
+                Total = 0,
+                AmountPaid = 0,
+                ChangeGiven = 0
             };
 
-            _sales.Add(newSale);
-            return newSale;
+            return _saleRepository.Add(sale);
         }
 
         /// <summary>
-        /// Scanner en stregkode og tilføjer produktet til salget (UC3.1 hovedfunktion)
+        /// Scanner en stregkode og tilføjer produktet til salget
         /// </summary>
-        public ScanResult ScanBarcode(Sale sale, string barcode)
+        public ScanResult ScanBarcode(int saleId, string barcode)
         {
             var result = new ScanResult();
+            var sale = _saleRepository.GetById(saleId);
 
             if (sale == null || string.IsNullOrEmpty(barcode))
             {
@@ -89,7 +63,7 @@ namespace ReolMarked.MVVM.Services
                 return result;
             }
 
-            // Find label baseret på stregkode
+            // Find label
             var label = _barcodeService.FindLabelByBarcode(barcode);
             if (label == null)
             {
@@ -98,8 +72,8 @@ namespace ReolMarked.MVVM.Services
                 return result;
             }
 
-            // Tjek at produktet kan sælges
-            if (label.IsSold)
+            // Valider label
+            if (label.SoldDate.HasValue)
             {
                 result.Success = false;
                 result.ErrorMessage = "Produktet er allerede solgt";
@@ -116,87 +90,136 @@ namespace ReolMarked.MVVM.Services
             // Opret salgslinje
             var saleLine = new SaleLine
             {
-                SalgsLinjeId = _nextSaleLineId++,
-                SaleId = sale.SaleId,
+                SaleId = saleId,
                 LabelId = label.LabelId,
-                Label = label,
-                Antal = 1,
-                EnhedsPris = label.ProductPrice,
+                Quantity = 1,
+                UnitPrice = label.ProductPrice,
+                LineTotal = label.ProductPrice,
                 AddedAt = DateTime.Now
             };
 
+            saleLine = _saleLineRepository.Add(saleLine);
+            saleLine.Label = label;
             saleLine.Sale = sale;
 
-            // Tilføj til salget
-            sale.AddSaleLine(saleLine);
+            // Opdater total
+            CalculateAndUpdateSaleTotal(saleId);
 
             result.Success = true;
             result.AddedSaleLine = saleLine;
-            result.Message = $"Tilføjet: {saleLine.ProductName} - {saleLine.EnhedsPrisFormatted}";
+            result.Message = $"Tilføjet: {label.ProductPrice:C0}";
 
             return result;
         }
 
         /// <summary>
+        /// Beregner linjetotal for en salgslinje
+        /// </summary>
+        private decimal CalculateLineTotal(int quantity, decimal unitPrice)
+        {
+            return quantity * unitPrice;
+        }
+
+        /// <summary>
+        /// Beregner og opdaterer total for salg
+        /// </summary>
+        private void CalculateAndUpdateSaleTotal(int saleId)
+        {
+            var saleLines = _saleLineRepository.GetBySaleId(saleId);
+            var total = saleLines.Sum(sl => sl.LineTotal);
+
+            var sale = _saleRepository.GetById(saleId);
+            if (sale != null)
+            {
+                sale.Total = total;
+                _saleRepository.Update(sale);
+            }
+        }
+
+        /// <summary>
         /// Fjerner et produkt fra salget
         /// </summary>
-        public bool RemoveProductFromSale(Sale sale, SaleLine saleLine)
+        public bool RemoveProductFromSale(int saleId, int saleLineId)
         {
-            if (sale == null || saleLine == null)
+            var saleLine = _saleLineRepository.GetById(saleLineId);
+            if (saleLine == null || saleLine.SaleId != saleId)
                 return false;
 
-            sale.RemoveSaleLine(saleLine);
+            _saleLineRepository.Delete(saleLineId);
+            CalculateAndUpdateSaleTotal(saleId);
             return true;
         }
 
         /// <summary>
-        /// Gennemfører betaling og afslutter salget (når Aya betaler)
+        /// Gennemfører betaling og afslutter salget
         /// </summary>
-        public PaymentResult ProcessPayment(Sale sale, decimal betaltBelob, string betalingsForm)
+        public PaymentResult ProcessPayment(int saleId, decimal amountPaid, PaymentMethod paymentMethod)
         {
             var result = new PaymentResult();
+            var sale = _saleRepository.GetById(saleId);
 
-            if (sale == null || sale.SaleLines.Count == 0)
+            if (sale == null)
+            {
+                result.Success = false;
+                result.ErrorMessage = "Salg ikke fundet";
+                return result;
+            }
+
+            var saleLines = _saleLineRepository.GetBySaleId(saleId).ToList();
+            if (saleLines.Count == 0)
             {
                 result.Success = false;
                 result.ErrorMessage = "Intet at betale for";
                 return result;
             }
 
-            if (betaltBelob < sale.Total)
+            if (amountPaid < sale.Total)
             {
                 result.Success = false;
-                result.ErrorMessage = $"Utilstrækkelig betaling. Mangler {(sale.Total - betaltBelob):C0}";
+                result.ErrorMessage = $"Utilstrækkelig betaling. Mangler {(sale.Total - amountPaid):C0}";
                 return result;
             }
 
             // Opdater salg
-            sale.BetaltBelob = betaltBelob;
-            sale.BetalingsForm = betalingsForm;
-            sale.CompleteSale();
+            sale.AmountPaid = amountPaid;
+            sale.PaymentMethod = paymentMethod;
+            sale.ChangeGiven = amountPaid - sale.Total;
+            sale.IsCompleted = true;
+            sale.SaleDateTime = DateTime.Now;
+            _saleRepository.Update(sale);
 
             // Marker produkter som solgte og opret reol salg
-            foreach (var saleLine in sale.SaleLines)
+            foreach (var saleLine in saleLines)
             {
                 // Marker label som solgt
-                if (saleLine.Label != null)
+                if (saleLine.LabelId > 0)
                 {
-                    saleLine.Label.MarkAsSold();
+                    _barcodeService.MarkLabelAsSold(saleLine.LabelId);
                 }
 
-                // Opret reol salg (Jonas' noter på reol kort)
-                var rackSale = RackSale.CreateFromSaleLine(saleLine);
-                if (rackSale != null)
+                // Opret reol salg
+                var label = _barcodeService.FindLabelByBarcode(saleLine.Label?.BarCode ?? "");
+                if (label?.Customer != null)
                 {
-                    rackSale.ReolSalgId = _nextRackSaleId++;
-                    _rackSales.Add(rackSale);
+                    var rackSale = new RackSale
+                    {
+                        SaleId = saleId,
+                        RackNumber = label.RackId,
+                        CustomerId = label.Customer.CustomerId,
+                        Date = DateTime.Now,
+                        Amount = saleLine.LineTotal,
+                        ProductInfo = $"{label.BarCode}",
+                        Notes = $"Salg via scanner - {saleLine.Quantity} stk"
+                    };
+
+                    _rackSaleRepository.Add(rackSale);
                 }
             }
 
             result.Success = true;
             result.CompletedSale = sale;
-            result.ByttePenge = sale.ByttePenge;
-            result.Message = $"Betaling gennemført. Byttepenge: {sale.ByttePengeFormatted}";
+            result.ChangeGiven = sale.ChangeGiven;
+            result.Message = $"Betaling gennemført. Byttepenge: {sale.ChangeGiven:C0}";
 
             return result;
         }
@@ -204,112 +227,60 @@ namespace ReolMarked.MVVM.Services
         /// <summary>
         /// Annullerer et salg
         /// </summary>
-        public bool CancelSale(Sale sale)
+        public bool CancelSale(int saleId)
         {
+            var sale = _saleRepository.GetById(saleId);
             if (sale == null)
                 return false;
 
-            sale.CancelSale();
+            // Slet alle salgslinjer
+            var saleLines = _saleLineRepository.GetBySaleId(saleId);
+            foreach (var saleLine in saleLines)
+            {
+                _saleLineRepository.Delete(saleLine.SaleLineId);
+            }
+
+            // Opdater salg
+            sale.Total = 0;
+            sale.AmountPaid = 0;
+            sale.ChangeGiven = 0;
+            sale.IsCompleted = false;
+            sale.Notes = "Annulleret";
+            _saleRepository.Update(sale);
+
             return true;
         }
 
-        // Eksisterende metoder for at hente data...
-        public ObservableCollection<Sale> GetSalesForPeriod(DateTime fromDate, DateTime toDate)
+        /// <summary>
+        /// Henter salg for en periode
+        /// </summary>
+        public IEnumerable<Sale> GetSalesForPeriod(DateTime fromDate, DateTime toDate)
         {
-            var periodSales = new List<Sale>();
-
-            foreach (var sale in _sales)
-            {
-                if (sale.DatoTid.Date >= fromDate.Date && sale.DatoTid.Date <= toDate.Date)
-                {
-                    periodSales.Add(sale);
-                }
-            }
-
-            return new ObservableCollection<Sale>(periodSales);
+            return _saleRepository.GetByDateRange(fromDate, toDate);
         }
 
-        public ObservableCollection<RackSale> GetRackSalesForCustomer(int customerId)
+        /// <summary>
+        /// Henter reol salg for en kunde
+        /// </summary>
+        public IEnumerable<RackSale> GetRackSalesForCustomer(int customerId)
         {
-            var customerRackSales = new List<RackSale>();
-
-            foreach (var rackSale in _rackSales)
-            {
-                if (rackSale.CustomerId == customerId)
-                {
-                    customerRackSales.Add(rackSale);
-                }
-            }
-
-            return new ObservableCollection<RackSale>(customerRackSales);
+            return _rackSaleRepository.GetByCustomerId(customerId);
         }
 
-        public ObservableCollection<RackSale> GetRackSalesForRack(int rackNumber)
-        {
-            var rackSalesList = new List<RackSale>();
-
-            foreach (var rackSale in _rackSales)
-            {
-                if (rackSale.RackNumber == rackNumber)
-                {
-                    rackSalesList.Add(rackSale);
-                }
-            }
-
-            return new ObservableCollection<RackSale>(rackSalesList);
-        }
-
+        /// <summary>
+        /// Beregner total omsætning for periode
+        /// </summary>
         public decimal CalculateTotalRevenue(DateTime fromDate, DateTime toDate)
         {
-            decimal totalRevenue = 0;
+            var sales = _saleRepository.GetByDateRange(fromDate, toDate)
+                .Where(s => s.IsCompleted);
 
-            foreach (var sale in _sales)
-            {
-                if (sale.IsCompleted &&
-                    sale.DatoTid.Date >= fromDate.Date &&
-                    sale.DatoTid.Date <= toDate.Date)
-                {
-                    totalRevenue += sale.Total;
-                }
-            }
-
-            return totalRevenue;
+            return sales.Sum(s => s.Total);
         }
 
         public Sale GetSaleById(int saleId)
         {
-            foreach (var sale in _sales)
-            {
-                if (sale.SaleId == saleId)
-                {
-                    return sale;
-                }
-            }
-
-            return null;
+            return _saleRepository.GetById(saleId);
         }
-    }
-
-    /// <summary>
-    /// Result klasse for scanner operationer
-    /// </summary>
-    public class ScanResult
-    {
-        public bool Success { get; set; }
-        public string ErrorMessage { get; set; } = "";
-        public string Message { get; set; } = "";
-        public SaleLine AddedSaleLine { get; set; }
-    }
-
-    /// <summary>
-    /// Result klasse for betalings operationer
-    /// </summary>
-    public class PaymentResult
-    {
-        public bool Success { get; set; }
-        public string ErrorMessage { get; set; } = "";
-        public string Message { get; set; } = "";
-        public Sale CompletedSale { get; set; }
-        public decimal ByttePenge { get; set; }
     }
 }

@@ -1,224 +1,185 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
+using System.Linq;
 using ReolMarked.MVVM.Models;
-using ReolMarked.MVVM.Repositories;
+using ReolMarked.MVVM.Repositories.Interfaces;
 
 namespace ReolMarked.MVVM.Services
 {
     /// <summary>
-    /// Service klasse til at håndtere reol udlejning
-    /// Håndterer forretningslogikken for lejeaftaler
+    /// Service til at håndtere reol udlejning
+    /// Indeholder AL forretningslogik for lejeaftaler
     /// </summary>
     public class RentalService
     {
-        // Private liste til at gemme alle lejeaftaler
-        private List<RentalAgreement> _agreements;
-        private int _nextId; // Til at tildele unikke ID'er
+        private readonly IRentalAgreementRepository _agreementRepository;
+        private readonly IRackRepository _rackRepository;
+        private readonly ICustomerRepository _customerRepository;
 
-        // Reference til repositories
-        private CustomerRepository _customerRepo;
-        private RackRepository _rackRepo;
-
-        // Konstruktør - opretter service og laver test data
-        public RentalService(CustomerRepository customerRepo, RackRepository rackRepo)
+        public RentalService(
+            IRentalAgreementRepository agreementRepository,
+            IRackRepository rackRepository,
+            ICustomerRepository customerRepository)
         {
-            _agreements = new List<RentalAgreement>();
-            _nextId = 1;
-            _customerRepo = customerRepo;
-            _rackRepo = rackRepo;
-            CreateTestData();
+            _agreementRepository = agreementRepository;
+            _rackRepository = rackRepository;
+            _customerRepository = customerRepository;
         }
 
         /// <summary>
-        /// Opretter test data - simulerer Peters eksisterende aftaler
+        /// Opretter en ny lejeaftale med automatisk prisberegning
         /// </summary>
-        private void CreateTestData()
+        public RentalAgreement CreateRentalAgreement(int customerId, int rackId, DateTime startDate)
         {
-            // Find Peter Holm (skal oprettes i CustomerRepository først)
-            var peter = _customerRepo.AddCustomer("Peter Holm", "12345678", "peter@email.dk", "Nørregade 10, Middelby");
+            var customer = _customerRepository.GetById(customerId);
+            var rack = _rackRepository.GetById(rackId);
 
-            // Peter har reol 7 og 42 som i use caset
-            CreateRentalAgreement(peter, GetRackInfo(7), DateTime.Now.AddMonths(-6));
-            CreateRentalAgreement(peter, GetRackInfo(42), DateTime.Now.AddMonths(-3));
+            if (customer == null)
+                throw new InvalidOperationException("Kunde ikke fundet");
 
-            // Lav også en aftale for Mette (reol 15)
-            var mette = FindCustomer("23456789"); // Existing customer
-            if (mette != null)
-            {
-                CreateRentalAgreement(mette, GetRackInfo(15), DateTime.Now.AddMonths(-12));
-            }
-        }
+            if (rack == null)
+                throw new InvalidOperationException("Reol ikke fundet");
 
-        /// <summary>
-        /// Henter rack info baseret på rack nummer
-        /// </summary>
-        private Rack GetRackInfo(int rackNumber)
-        {
-            return _rackRepo.GetRackByNumber(rackNumber);
-        }
-
-        /// <summary>
-        /// Finder kunde baseret på telefonnummer
-        /// </summary>
-        private Customer FindCustomer(string phoneNumber)
-        {
-            return _customerRepo.GetCustomerByPhone(phoneNumber);
-        }
-
-        /// <summary>
-        /// Opretter en ny lejeaftale (hovedmetoden til UC2)
-        /// </summary>
-        public RentalAgreement CreateRentalAgreement(Customer customer, Rack rack, DateTime startDate)
-        {
-            // Tjek at kunden og reolen er gyldige
-            if (customer == null || rack == null)
-                return null;
-
-            // Tjek at reolen er ledig
             if (!rack.IsAvailable)
-                return null;
+                throw new InvalidOperationException("Reol er ikke ledig");
 
             // Beregn pris baseret på kundens antal reoler
-            int customerRackCount = CountRacksForCustomer(customer.CustomerId);
+            int currentRackCount = CountActiveRacksForCustomer(customerId);
+            decimal price = CalculateRentPrice(currentRackCount + 1);
 
-            // Opret ny lejeaftale
-            var newAgreement = new RentalAgreement
+            // Opret ny aftale
+            var agreement = new RentalAgreement
             {
-                AgreementId = _nextId++,
-                CustomerId = customer.CustomerId,
-                RackId = rack.RackNumber,
+                CustomerId = customerId,
+                RackId = rackId,
                 StartDate = startDate,
-                Status = "Active",
-                CreatedAt = DateTime.Now,
+                MonthlyRent = price,
+                Status = RentalStatus.Active,
                 Notes = $"Lejeaftale oprettet for reol {rack.RackNumber}"
             };
 
-            // Beregn leje baseret på antal reoler (inklusiv den nye)
-            newAgreement.CalculateRentDiscount(customerRackCount + 1);
+            // Gem i database
+            agreement = _agreementRepository.Add(agreement);
+
+            // Opdater rack status
+            rack.IsAvailable = false;
+            _rackRepository.Update(rack);
 
             // Opdater alle kundens eksisterende aftaler med ny pris
-            UpdateCustomerRentPrices(customer.CustomerId, customerRackCount + 1);
-
-            // Tilføj til listen
-            _agreements.Add(newAgreement);
-
-            // Marker reol som optaget
-            _rackRepo.ReserveRack(rack.RackNumber);
+            UpdateCustomerRentPrices(customerId, currentRackCount + 1);
 
             // Fyld navigation properties
-            newAgreement.Customer = customer;
-            newAgreement.Rack = rack;
+            agreement.Customer = customer;
+            agreement.Rack = rack;
 
-            return newAgreement;
+            return agreement;
         }
 
         /// <summary>
-        /// Henter alle reoler som en kunde lejer (til UC2)
-        /// Som når Peter oplyser han har reol 7 og 42
+        /// Beregner månedlig leje baseret på antal reoler
+        /// 1 reol: 850 kr, 2-3 reoler: 825 kr, 4+ reoler: 800 kr
         /// </summary>
-        public ObservableCollection<Rack> GetRacksForCustomer(int customerId)
+        public decimal CalculateRentPrice(int totalRacksCount)
         {
-            var customerRacks = new List<Rack>();
+            if (totalRacksCount == 1)
+                return 850m;
+            else if (totalRacksCount >= 2 && totalRacksCount <= 3)
+                return 825m;
+            else if (totalRacksCount >= 4)
+                return 800m;
 
-            // Gå gennem alle aktive aftaler for kunden
-            foreach (var agreement in _agreements)
+            return 850m; // Default
+        }
+
+        /// <summary>
+        /// Opdaterer leje priser for alle kundens aftaler
+        /// </summary>
+        private void UpdateCustomerRentPrices(int customerId, int totalRacksCount)
+        {
+            var agreements = _agreementRepository.GetByCustomerId(customerId);
+            decimal newPrice = CalculateRentPrice(totalRacksCount);
+
+            foreach (var agreement in agreements)
             {
-                if (agreement.CustomerId == customerId && agreement.IsActive)
+                if (agreement.Status == RentalStatus.Active)
                 {
-                    // Find reolen for denne aftale
-                    var rack = _rackRepo.GetRackByNumber(agreement.RackId);
-                    if (rack != null)
-                    {
-                        customerRacks.Add(rack);
-                    }
+                    agreement.MonthlyRent = newPrice;
+                    _agreementRepository.Update(agreement);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Henter alle reoler som en kunde lejer
+        /// </summary>
+        public IEnumerable<Rack> GetRacksForCustomer(int customerId)
+        {
+            var agreements = _agreementRepository.GetByCustomerId(customerId)
+                .Where(a => a.Status == RentalStatus.Active);
+
+            var racks = new List<Rack>();
+            foreach (var agreement in agreements)
+            {
+                var rack = _rackRepository.GetById(agreement.RackId);
+                if (rack != null)
+                {
+                    racks.Add(rack);
                 }
             }
 
-            return new ObservableCollection<Rack>(customerRacks);
+            return racks;
         }
 
         /// <summary>
-        /// Finder ledige nabo-reoler til alle kundens reoler (til UC2)
+        /// Finder ledige nabo-reoler til alle kundens reoler
         /// </summary>
-        public ObservableCollection<Rack> GetAvailableNeighborRacksForCustomer(int customerId)
+        public IEnumerable<Rack> GetAvailableNeighborRacksForCustomer(int customerId)
         {
-            var allNeighbors = new List<Rack>();
-            var addedRacks = new List<int>(); // For at undgå dubletter
-
-            // Få alle kundens reoler
             var customerRacks = GetRacksForCustomer(customerId);
+            var allAvailableRacks = _rackRepository.GetByAvailability(true);
+            var neighborRacks = new HashSet<Rack>();
 
-            // Find nabo-reoler for hver af kundens reoler
             foreach (var rack in customerRacks)
             {
-                var neighbors = _rackRepo.GetAvailableNeighborRacks(rack.RackNumber);
+                // Find nabo-reoler (rackNumber +1 og -1)
+                var leftNeighbor = allAvailableRacks.FirstOrDefault(r => r.RackNumber == rack.RackNumber - 1);
+                var rightNeighbor = allAvailableRacks.FirstOrDefault(r => r.RackNumber == rack.RackNumber + 1);
 
-                foreach (var neighbor in neighbors)
-                {
-                    // Undgå dubletter
-                    if (!addedRacks.Contains(neighbor.RackNumber))
-                    {
-                        allNeighbors.Add(neighbor);
-                        addedRacks.Add(neighbor.RackNumber);
-                    }
-                }
+                if (leftNeighbor != null)
+                    neighborRacks.Add(leftNeighbor);
+
+                if (rightNeighbor != null)
+                    neighborRacks.Add(rightNeighbor);
             }
 
-            return new ObservableCollection<Rack>(allNeighbors);
+            return neighborRacks;
         }
 
         /// <summary>
         /// Henter alle aktive aftaler for en kunde
         /// </summary>
-        public ObservableCollection<RentalAgreement> GetActiveAgreementsForCustomer(int customerId)
+        public IEnumerable<RentalAgreement> GetActiveAgreementsForCustomer(int customerId)
         {
-            var customerAgreements = new List<RentalAgreement>();
+            var agreements = _agreementRepository.GetByCustomerId(customerId)
+                .Where(a => a.Status == RentalStatus.Active);
 
-            foreach (var agreement in _agreements)
+            // Fyld navigation properties
+            foreach (var agreement in agreements)
             {
-                if (agreement.CustomerId == customerId && agreement.IsActive)
-                {
-                    // Fyld navigation properties
-                    agreement.Customer = _customerRepo.GetCustomerById(agreement.CustomerId);
-                    agreement.Rack = _rackRepo.GetRackByNumber(agreement.RackId);
-                    customerAgreements.Add(agreement);
-                }
+                agreement.Customer = _customerRepository.GetById(agreement.CustomerId);
+                agreement.Rack = _rackRepository.GetById(agreement.RackId);
             }
 
-            return new ObservableCollection<RentalAgreement>(customerAgreements);
+            return agreements;
         }
 
         /// <summary>
-        /// Tæller antal reoler en kunde lejer
+        /// Tæller antal aktive reoler for en kunde
         /// </summary>
-        public int CountRacksForCustomer(int customerId)
+        public int CountActiveRacksForCustomer(int customerId)
         {
-            int count = 0;
-
-            foreach (var agreement in _agreements)
-            {
-                if (agreement.CustomerId == customerId && agreement.IsActive)
-                {
-                    count++;
-                }
-            }
-
-            return count;
-        }
-
-        /// <summary>
-        /// Opdaterer leje priser for alle kundens aftaler baseret på samlet antal reoler
-        /// </summary>
-        private void UpdateCustomerRentPrices(int customerId, int totalRacksCount)
-        {
-            foreach (var agreement in _agreements)
-            {
-                if (agreement.CustomerId == customerId && agreement.IsActive)
-                {
-                    agreement.CalculateRentDiscount(totalRacksCount);
-                }
-            }
+            return _agreementRepository.GetByCustomerId(customerId)
+                .Count(a => a.Status == RentalStatus.Active);
         }
 
         /// <summary>
@@ -226,63 +187,44 @@ namespace ReolMarked.MVVM.Services
         /// </summary>
         public bool EndAgreement(int agreementId)
         {
-            foreach (var agreement in _agreements)
+            var agreement = _agreementRepository.GetById(agreementId);
+            if (agreement == null || agreement.Status != RentalStatus.Active)
+                return false;
+
+            // Sæt status til terminated
+            agreement.Status = RentalStatus.Terminated;
+            _agreementRepository.Update(agreement);
+
+            // Frigør reolen
+            var rack = _rackRepository.GetById(agreement.RackId);
+            if (rack != null)
             {
-                if (agreement.AgreementId == agreementId && agreement.IsActive)
-                {
-                    agreement.Status = "Inactive";
-
-                    // Frigør reolen
-                    _rackRepo.ReleaseRack(agreement.RackId);
-
-                    // Opdater kundens øvrige aftaler med ny pris
-                    int remainingRacks = CountRacksForCustomer(agreement.CustomerId);
-                    UpdateCustomerRentPrices(agreement.CustomerId, remainingRacks);
-
-                    return true;
-                }
+                rack.IsAvailable = true;
+                _rackRepository.Update(rack);
             }
 
-            return false;
+            // Opdater kundens øvrige aftaler med ny pris
+            int remainingRacks = CountActiveRacksForCustomer(agreement.CustomerId);
+            UpdateCustomerRentPrices(agreement.CustomerId, remainingRacks);
+
+            return true;
         }
 
         /// <summary>
         /// Henter alle aktive aftaler
         /// </summary>
-        public ObservableCollection<RentalAgreement> GetAllActiveAgreements()
+        public IEnumerable<RentalAgreement> GetAllActiveAgreements()
         {
-            var activeAgreements = new List<RentalAgreement>();
+            var agreements = _agreementRepository.GetByStatus(RentalStatus.Active);
 
-            foreach (var agreement in _agreements)
+            // Fyld navigation properties
+            foreach (var agreement in agreements)
             {
-                if (agreement.IsActive)
-                {
-                    // Fyld navigation properties
-                    agreement.Customer = _customerRepo.GetCustomerById(agreement.CustomerId);
-                    agreement.Rack = _rackRepo.GetRackByNumber(agreement.RackId);
-                    activeAgreements.Add(agreement);
-                }
+                agreement.Customer = _customerRepository.GetById(agreement.CustomerId);
+                agreement.Rack = _rackRepository.GetById(agreement.RackId);
             }
 
-            return new ObservableCollection<RentalAgreement>(activeAgreements);
-        }
-
-        /// <summary>
-        /// Tæller antal aktive aftaler
-        /// </summary>
-        public int CountActiveAgreements()
-        {
-            int count = 0;
-
-            foreach (var agreement in _agreements)
-            {
-                if (agreement.IsActive)
-                {
-                    count++;
-                }
-            }
-
-            return count;
+            return agreements;
         }
     }
 }

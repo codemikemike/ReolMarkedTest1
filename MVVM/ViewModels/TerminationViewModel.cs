@@ -1,365 +1,169 @@
 ﻿using System;
 using System.Collections.ObjectModel;
-using System.ComponentModel;
+using System.Linq;
 using System.Windows;
-using ReolMarked.MVVM.Models;
-using ReolMarked.MVVM.Repositories;
-using ReolMarked.MVVM.Services;
 using ReolMarked.MVVM.Commands;
+using ReolMarked.MVVM.Infrastructure;
+using ReolMarked.MVVM.Services;
+using ReolMarked.MVVM.ViewModels.Base;
 
 namespace ReolMarked.MVVM.ViewModels
 {
-    /// <summary>
-    /// ViewModel for opsigelse af reoler (UC5.1)
-    /// Håndterer UI logik for medarbejdere der skal registrere opsigelser
-    /// </summary>
-    public class TerminationViewModel : INotifyPropertyChanged
+    public class TerminationViewModel : ViewModelBase
     {
-        // Private felter til services og repositories
         private readonly TerminationService _terminationService;
-        private readonly CustomerRepository _customerRepository;
-        private readonly RackRepository _rackRepository;
+        private readonly CustomerService _customerService;
         private readonly RentalService _rentalService;
 
-        // Private felter til UI binding
-        private string _customerPhone = "";
-        private Customer _selectedCustomer;
-        private ObservableCollection<Rack> _customerRacks = new();
+        private string _customerPhone = string.Empty;
+        private CustomerViewModel _selectedCustomer;
+        private ObservableCollection<RackViewModel> _customerRacks;
         private int _selectedRackNumber;
         private DateTime _desiredTerminationDate;
-        private string _terminationReason = "";
-        private string _statusMessage = "";
-        private bool _useCustomDate = false;
+        private string _terminationReason = string.Empty;
+        private string _statusMessage = string.Empty;
+        private bool _useCustomDate;
 
-        // Lister til visning
-        private ObservableCollection<RackTermination> _activeTerminations = new();
-        private ObservableCollection<RackTermination> _customerTerminations = new();
-        private ObservableCollection<RackTermination> _terminationsToProcess = new();
-        private ObservableCollection<RackTermination> _processedTerminations = new(); // NYE - historik
-        private RackTermination _selectedTermination;
+        private ObservableCollection<RackTerminationViewModel> _activeTerminations;
+        private ObservableCollection<RackTerminationViewModel> _customerTerminations;
+        private RackTerminationViewModel _selectedTermination;
 
-        // Konstruktør - opsætter services
         public TerminationViewModel()
         {
-            // Opret repositories og services
-            _rackRepository = new RackRepository();
-            _customerRepository = new CustomerRepository();
-            _rentalService = new RentalService(_customerRepository, _rackRepository);
-            _terminationService = new TerminationService(_customerRepository, _rackRepository, _rentalService);
+            // Hent services fra ServiceLocator
+            _terminationService = ServiceLocator.TerminationService;
+            _customerService = ServiceLocator.CustomerService;
+            _rentalService = ServiceLocator.RentalService;
 
-            // Sæt standard værdier
+            _customerRacks = new ObservableCollection<RackViewModel>();
+            _activeTerminations = new ObservableCollection<RackTerminationViewModel>();
+            _customerTerminations = new ObservableCollection<RackTerminationViewModel>();
+
             DesiredTerminationDate = DateTime.Now.Date.AddMonths(1);
             StatusMessage = "Find kunde for at registrere opsigelse";
 
-            // Opret kommandoer
             CreateCommands();
-
-            // Indlæs data
             LoadTerminationData();
         }
 
-        // Properties til UI binding
-
-        /// <summary>
-        /// Kundens telefonnummer til at finde kunden
-        /// </summary>
         public string CustomerPhone
         {
-            get { return _customerPhone; }
+            get => _customerPhone;
             set
             {
-                _customerPhone = value;
-                OnPropertyChanged(nameof(CustomerPhone));
-                OnPropertyChanged(nameof(CanFindCustomer));
+                if (SetProperty(ref _customerPhone, value))
+                    OnPropertyChanged(nameof(CanFindCustomer));
             }
         }
 
-        /// <summary>
-        /// Den fundne kunde
-        /// </summary>
-        public Customer SelectedCustomer
+        public CustomerViewModel SelectedCustomer
         {
-            get { return _selectedCustomer; }
+            get => _selectedCustomer;
             set
             {
-                _selectedCustomer = value;
-                OnPropertyChanged(nameof(SelectedCustomer));
-                OnPropertyChanged(nameof(IsCustomerSelected));
-
-                if (_selectedCustomer != null)
+                if (SetProperty(ref _selectedCustomer, value))
                 {
-                    LoadCustomerRacks();
-                    LoadCustomerTerminations();
-                    StatusMessage = $"Kunde fundet: {_selectedCustomer.CustomerName}. Vælg reol til opsigelse.";
-                }
-                else
-                {
-                    CustomerRacks.Clear();
-                    CustomerTerminations.Clear();
+                    OnPropertyChanged(nameof(IsCustomerSelected));
+                    if (value != null)
+                    {
+                        LoadCustomerRacks();
+                        LoadCustomerTerminations();
+                        StatusMessage = $"Kunde fundet: {value.Name}";
+                    }
+                    else
+                    {
+                        CustomerRacks.Clear();
+                        CustomerTerminations.Clear();
+                    }
                 }
             }
         }
 
-        /// <summary>
-        /// Kundens aktive reoler
-        /// </summary>
-        public ObservableCollection<Rack> CustomerRacks
+        public ObservableCollection<RackViewModel> CustomerRacks
         {
-            get { return _customerRacks; }
-            set
-            {
-                _customerRacks = value;
-                OnPropertyChanged(nameof(CustomerRacks));
-                OnPropertyChanged(nameof(HasCustomerRacks));
-            }
+            get => _customerRacks;
+            set => SetProperty(ref _customerRacks, value);
         }
 
-        /// <summary>
-        /// Valgt reolnummer til opsigelse
-        /// </summary>
         public int SelectedRackNumber
         {
-            get { return _selectedRackNumber; }
+            get => _selectedRackNumber;
             set
             {
-                _selectedRackNumber = value;
-                OnPropertyChanged(nameof(SelectedRackNumber));
-                OnPropertyChanged(nameof(IsRackSelected));
-                OnPropertyChanged(nameof(CanCreateTermination));
-
-                if (_selectedRackNumber > 0 && !UseCustomDate)
+                if (SetProperty(ref _selectedRackNumber, value))
                 {
-                    CalculateAutomaticDate();
+                    OnPropertyChanged(nameof(IsRackSelected));
+                    OnPropertyChanged(nameof(CanCreateTermination));
+                    if (value > 0 && !UseCustomDate)
+                        CalculateAutomaticDate();
                 }
             }
         }
 
-        /// <summary>
-        /// Ønsket opsigelsesdato
-        /// </summary>
         public DateTime DesiredTerminationDate
         {
-            get { return _desiredTerminationDate; }
+            get => _desiredTerminationDate;
             set
             {
-                _desiredTerminationDate = value;
-                OnPropertyChanged(nameof(DesiredTerminationDate));
-                OnPropertyChanged(nameof(DesiredTerminationDateFormatted));
+                if (SetProperty(ref _desiredTerminationDate, value))
+                    OnPropertyChanged(nameof(DesiredTerminationDateFormatted));
             }
         }
 
-        /// <summary>
-        /// Om der bruges en specifik dato i stedet for automatisk beregning
-        /// </summary>
         public bool UseCustomDate
         {
-            get { return _useCustomDate; }
+            get => _useCustomDate;
             set
             {
-                _useCustomDate = value;
-                OnPropertyChanged(nameof(UseCustomDate));
-                OnPropertyChanged(nameof(UseAutomaticDate));
-                // Fjern automatisk beregning helt - lad brugeren kontrollere datoen
+                if (SetProperty(ref _useCustomDate, value))
+                    OnPropertyChanged(nameof(UseAutomaticDate));
             }
         }
 
-        /// <summary>
-        /// Årsag til opsigelsen
-        /// </summary>
         public string TerminationReason
         {
-            get { return _terminationReason; }
-            set
-            {
-                _terminationReason = value;
-                OnPropertyChanged(nameof(TerminationReason));
-            }
+            get => _terminationReason;
+            set => SetProperty(ref _terminationReason, value);
         }
 
-        /// <summary>
-        /// Status besked til medarbejderen
-        /// </summary>
         public string StatusMessage
         {
-            get { return _statusMessage; }
+            get => _statusMessage;
+            set => SetProperty(ref _statusMessage, value);
+        }
+
+        public ObservableCollection<RackTerminationViewModel> ActiveTerminations
+        {
+            get => _activeTerminations;
+            set => SetProperty(ref _activeTerminations, value);
+        }
+
+        public ObservableCollection<RackTerminationViewModel> CustomerTerminations
+        {
+            get => _customerTerminations;
+            set => SetProperty(ref _customerTerminations, value);
+        }
+
+        public RackTerminationViewModel SelectedTermination
+        {
+            get => _selectedTermination;
             set
             {
-                _statusMessage = value;
-                OnPropertyChanged(nameof(StatusMessage));
+                if (SetProperty(ref _selectedTermination, value))
+                    OnPropertyChanged(nameof(IsTerminationSelected));
             }
         }
 
-        /// <summary>
-        /// Alle aktive opsigelser i systemet
-        /// </summary>
-        public ObservableCollection<RackTermination> ActiveTerminations
-        {
-            get { return _activeTerminations; }
-            set
-            {
-                _activeTerminations = value;
-                OnPropertyChanged(nameof(ActiveTerminations));
-                OnPropertyChanged(nameof(HasActiveTerminations));
-            }
-        }
+        public bool CanFindCustomer => !string.IsNullOrEmpty(CustomerPhone);
+        public bool IsCustomerSelected => SelectedCustomer != null;
+        public bool HasCustomerRacks => CustomerRacks != null && CustomerRacks.Any();
+        public bool IsRackSelected => SelectedRackNumber > 0;
+        public bool CanCreateTermination => IsCustomerSelected && IsRackSelected;
+        public bool UseAutomaticDate => !UseCustomDate;
+        public bool HasActiveTerminations => ActiveTerminations != null && ActiveTerminations.Any();
+        public bool IsTerminationSelected => SelectedTermination != null;
+        public string DesiredTerminationDateFormatted => DesiredTerminationDate.ToString("dd/MM/yyyy");
 
-        /// <summary>
-        /// Kundens eksisterende opsigelser
-        /// </summary>
-        public ObservableCollection<RackTermination> CustomerTerminations
-        {
-            get { return _customerTerminations; }
-            set
-            {
-                _customerTerminations = value;
-                OnPropertyChanged(nameof(CustomerTerminations));
-                OnPropertyChanged(nameof(HasCustomerTerminations));
-            }
-        }
-
-        /// <summary>
-        /// Opsigelser der skal behandles (trådt i kraft)
-        /// </summary>
-        public ObservableCollection<RackTermination> TerminationsToProcess
-        {
-            get { return _terminationsToProcess; }
-            set
-            {
-                _terminationsToProcess = value;
-                OnPropertyChanged(nameof(TerminationsToProcess));
-                OnPropertyChanged(nameof(HasTerminationsToProcess));
-            }
-        }
-
-        /// <summary>
-        /// Behandlede opsigelser (historik)
-        /// </summary>
-        public ObservableCollection<RackTermination> ProcessedTerminations
-        {
-            get { return _processedTerminations; }
-            set
-            {
-                _processedTerminations = value;
-                OnPropertyChanged(nameof(ProcessedTerminations));
-                OnPropertyChanged(nameof(HasProcessedTerminations));
-            }
-        }
-
-        /// <summary>
-        /// Valgt opsigelse i oversigten
-        /// </summary>
-        public RackTermination SelectedTermination
-        {
-            get { return _selectedTermination; }
-            set
-            {
-                _selectedTermination = value;
-                OnPropertyChanged(nameof(SelectedTermination));
-                OnPropertyChanged(nameof(IsTerminationSelected));
-            }
-        }
-
-        // Beregnet properties til UI kontrol
-
-        /// <summary>
-        /// Om der kan søges efter kunde
-        /// </summary>
-        public bool CanFindCustomer
-        {
-            get { return !string.IsNullOrEmpty(CustomerPhone); }
-        }
-
-        /// <summary>
-        /// Om der er valgt en kunde
-        /// </summary>
-        public bool IsCustomerSelected
-        {
-            get { return SelectedCustomer != null; }
-        }
-
-        /// <summary>
-        /// Om kunden har reoler
-        /// </summary>
-        public bool HasCustomerRacks
-        {
-            get { return CustomerRacks != null && CustomerRacks.Count > 0; }
-        }
-
-        /// <summary>
-        /// Om der er valgt en reol
-        /// </summary>
-        public bool IsRackSelected
-        {
-            get { return SelectedRackNumber > 0; }
-        }
-
-        /// <summary>
-        /// Om der kan oprettes en opsigelse
-        /// </summary>
-        public bool CanCreateTermination
-        {
-            get
-            {
-                return IsCustomerSelected && IsRackSelected &&
-                       _terminationService.CanCustomerTerminateRack(SelectedCustomer.CustomerId, SelectedRackNumber);
-            }
-        }
-
-        /// <summary>
-        /// Om der bruges automatisk datoberegning
-        /// </summary>
-        public bool UseAutomaticDate
-        {
-            get { return !UseCustomDate; }
-        }
-
-        /// <summary>
-        /// Om der er aktive opsigelser
-        /// </summary>
-        public bool HasActiveTerminations
-        {
-            get { return ActiveTerminations != null && ActiveTerminations.Count > 0; }
-        }
-
-        /// <summary>
-        /// Om kunden har opsigelser
-        /// </summary>
-        public bool HasCustomerTerminations
-        {
-            get { return CustomerTerminations != null && CustomerTerminations.Count > 0; }
-        }
-
-        /// <summary>
-        /// Om der er opsigelser at behandle
-        /// </summary>
-        public bool HasTerminationsToProcess
-        {
-            get { return TerminationsToProcess != null && TerminationsToProcess.Count > 0; }
-        }
-
-        /// <summary>
-        /// Om der er behandlede opsigelser
-        /// </summary>
-        public bool HasProcessedTerminations
-        {
-            get { return ProcessedTerminations != null && ProcessedTerminations.Count > 0; }
-        }
-
-        /// <summary>
-        /// Om der er valgt en opsigelse
-        /// </summary>
-        public bool IsTerminationSelected
-        {
-            get { return SelectedTermination != null; }
-        }
-
-        // Formaterede værdier
-        public string DesiredTerminationDateFormatted
-        {
-            get { return DesiredTerminationDate.ToString("dd/MM/yyyy"); }
-        }
-
-        // Kommando properties
         public RelayCommand FindCustomerCommand { get; private set; }
         public RelayCommand CreateTerminationCommand { get; private set; }
         public RelayCommand CancelTerminationCommand { get; private set; }
@@ -367,109 +171,71 @@ namespace ReolMarked.MVVM.ViewModels
         public RelayCommand RefreshDataCommand { get; private set; }
         public RelayCommand ClearSelectionCommand { get; private set; }
 
-        // Private metoder
-
-        /// <summary>
-        /// Indlæser kundens reoler
-        /// </summary>
         private void LoadCustomerRacks()
         {
             if (SelectedCustomer != null)
             {
-                CustomerRacks = _rentalService.GetRacksForCustomer(SelectedCustomer.CustomerId);
+                var racks = _rentalService.GetRacksForCustomer(SelectedCustomer.CustomerId);
+                CustomerRacks = new ObservableCollection<RackViewModel>(
+                    racks.Select(r => new RackViewModel(r)));
             }
         }
 
-        /// <summary>
-        /// Indlæser kundens opsigelser
-        /// </summary>
         private void LoadCustomerTerminations()
         {
             if (SelectedCustomer != null)
             {
-                CustomerTerminations = _terminationService.GetTerminationsForCustomer(SelectedCustomer.CustomerId);
+                var terminations = _terminationService.GetTerminationsForCustomer(SelectedCustomer.CustomerId);
+                CustomerTerminations = new ObservableCollection<RackTerminationViewModel>(
+                    terminations.Select(t => new RackTerminationViewModel(t)));
             }
         }
 
-        /// <summary>
-        /// Indlæser alle opsigelsesdata
-        /// </summary>
         private void LoadTerminationData()
         {
-            ActiveTerminations = _terminationService.GetActiveTerminations();
-            TerminationsToProcess = _terminationService.GetTerminationsToProcess();
-            ProcessedTerminations = _terminationService.GetProcessedTerminations(); // NYE - historik
+            var activeTerminations = _terminationService.GetActiveTerminations();
+            ActiveTerminations = new ObservableCollection<RackTerminationViewModel>(
+                activeTerminations.Select(t => new RackTerminationViewModel(t)));
         }
 
-        /// <summary>
-        /// Beregner automatisk opsigelsesdato baseret på dagens dato
-        /// </summary>
         private void CalculateAutomaticDate()
         {
             if (!UseCustomDate)
             {
-                var tempTermination = new RackTermination
-                {
-                    RequestDate = DateTime.Now.Date
-                };
-                tempTermination.CalculateEffectiveDate();
-                DesiredTerminationDate = tempTermination.EffectiveDate;
+                DesiredTerminationDate = _terminationService.CalculateEffectiveDate(DateTime.Now.Date);
             }
         }
 
-        /// <summary>
-        /// Opretter alle kommandoer
-        /// </summary>
         private void CreateCommands()
         {
-            FindCustomerCommand = new RelayCommand(FindCustomer, CanExecuteFindCustomer);
-            CreateTerminationCommand = new RelayCommand(CreateTermination, CanExecuteCreateTermination);
+            FindCustomerCommand = new RelayCommand(FindCustomer, _ => CanFindCustomer);
+            CreateTerminationCommand = new RelayCommand(CreateTermination, _ => CanCreateTermination);
             CancelTerminationCommand = new RelayCommand(CancelTermination);
             ProcessEffectiveTerminationsCommand = new RelayCommand(ProcessEffectiveTerminations);
             RefreshDataCommand = new RelayCommand(RefreshData);
             ClearSelectionCommand = new RelayCommand(ClearSelection);
         }
 
-        // Kommando metoder
-
-        /// <summary>
-        /// Finder kunde baseret på telefonnummer
-        /// </summary>
         private void FindCustomer(object parameter)
         {
-            var customer = _customerRepository.GetCustomerByPhone(CustomerPhone);
+            var customer = _customerService.FindCustomerByPhone(CustomerPhone);
             if (customer != null)
             {
-                SelectedCustomer = customer;
+                SelectedCustomer = new CustomerViewModel(customer);
             }
             else
             {
-                MessageBox.Show("Kunde ikke fundet. Tjek telefonnummeret.", "Kunde ikke fundet",
-                    MessageBoxButton.OK, MessageBoxImage.Warning);
-                StatusMessage = "Kunde ikke fundet - prøv igen";
+                MessageBox.Show("Kunde ikke fundet.", "Fejl", MessageBoxButton.OK, MessageBoxImage.Warning);
+                StatusMessage = "Kunde ikke fundet";
             }
         }
 
-        private bool CanExecuteFindCustomer(object parameter)
-        {
-            return CanFindCustomer;
-        }
-
-        /// <summary>
-        /// Opretter en opsigelse (UC5.1 hovedfunktion)
-        /// </summary>
         private void CreateTermination(object parameter)
         {
             if (SelectedCustomer == null || SelectedRackNumber <= 0)
                 return;
 
-            DateTime? desiredDate = null;
-
-            // Kun send ønsket dato hvis brugeren specifikt har valgt at bruge en brugerdefineret dato
-            if (UseCustomDate)
-            {
-                desiredDate = DesiredTerminationDate;
-            }
+            DateTime? desiredDate = UseCustomDate ? DesiredTerminationDate : (DateTime?)null;
 
             var result = _terminationService.CreateTermination(
                 SelectedCustomer.CustomerId,
@@ -479,26 +245,17 @@ namespace ReolMarked.MVVM.ViewModels
 
             if (result.Success)
             {
-                string message = $"Opsigelse oprettet!\n\n" +
-                               $"Kunde: {SelectedCustomer.CustomerName}\n" +
-                               $"Reol: {SelectedRackNumber}\n" +
-                               $"Træder i kraft: {result.Termination.EffectiveDateFormatted}\n" +
-                               $"Regel: {result.Termination.TerminationRuleText}";
-
-                if (!string.IsNullOrEmpty(TerminationReason))
-                {
-                    message += $"\nÅrsag: {TerminationReason}";
-                }
-
-                MessageBox.Show(message, "Opsigelse oprettet", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show(
+                    $"Opsigelse oprettet!\n\nKunde: {SelectedCustomer.Name}\nReol: {SelectedRackNumber}\nTræder i kraft: {result.Termination.EffectiveDate:dd/MM/yyyy}",
+                    "Opsigelse oprettet",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
 
                 StatusMessage = result.Message;
                 LoadTerminationData();
                 LoadCustomerTerminations();
-
-                // Ryd formular
                 SelectedRackNumber = 0;
-                TerminationReason = "";
+                TerminationReason = string.Empty;
             }
             else
             {
@@ -507,30 +264,22 @@ namespace ReolMarked.MVVM.ViewModels
             }
         }
 
-        private bool CanExecuteCreateTermination(object parameter)
-        {
-            return CanCreateTermination;
-        }
-
-        /// <summary>
-        /// Annullerer en opsigelse
-        /// </summary>
         private void CancelTermination(object parameter)
         {
-            if (parameter is RackTermination termination)
+            if (parameter is RackTerminationViewModel terminationVM)
             {
                 var dialogResult = MessageBox.Show(
-                    $"Er du sikker på at du vil annullere opsigelsen for {termination.CustomerName} - {termination.RackNumberDisplay}?",
-                    "Annuller opsigelse", MessageBoxButton.YesNo, MessageBoxImage.Question);
+                    $"Annuller opsigelse for {terminationVM.CustomerName} - Reol {terminationVM.RackNumber}?",
+                    "Annuller opsigelse",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Question);
 
                 if (dialogResult == MessageBoxResult.Yes)
                 {
-                    var result = _terminationService.CancelTermination(termination.TerminationId, "Annulleret af medarbejder");
-
+                    var result = _terminationService.CancelTermination(terminationVM.TerminationId);
                     if (result.Success)
                     {
-                        MessageBox.Show(result.Message, "Opsigelse annulleret", MessageBoxButton.OK, MessageBoxImage.Information);
-                        StatusMessage = result.Message;
+                        MessageBox.Show(result.Message, "Success", MessageBoxButton.OK, MessageBoxImage.Information);
                         LoadTerminationData();
                         LoadCustomerTerminations();
                     }
@@ -542,77 +291,41 @@ namespace ReolMarked.MVVM.ViewModels
             }
         }
 
-        /// <summary>
-        /// Behandler opsigelser der er trådt i kraft
-        /// </summary>
         private void ProcessEffectiveTerminations(object parameter)
         {
-            var terminationsToProcess = _terminationService.GetTerminationsToProcess();
+            var result = _terminationService.ProcessEffectiveTerminations();
 
-            if (terminationsToProcess.Count == 0)
+            if (result.Success && result.ProcessedTerminations.Any())
             {
-                MessageBox.Show("Ingen opsigelser at behandle i øjeblikket.", "Ingen opsigelser",
-                    MessageBoxButton.OK, MessageBoxImage.Information);
-                return;
+                MessageBox.Show(
+                    $"Behandlet {result.ProcessedTerminations.Count} opsigelser",
+                    "Opsigelser behandlet",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+                LoadTerminationData();
             }
-
-            var dialogResult = MessageBox.Show(
-                $"Der er {terminationsToProcess.Count} opsigelser der skal behandles.\n\nVil du gennemføre dem nu?",
-                "Behandl opsigelser", MessageBoxButton.YesNo, MessageBoxImage.Question);
-
-            if (dialogResult == MessageBoxResult.Yes)
+            else
             {
-                var result = _terminationService.ProcessEffectiveTerminations();
-
-                if (result.Success)
-                {
-                    string message = $"Behandling gennemført!\n\n" +
-                                   $"Antal behandlede: {result.ProcessedTerminations.Count}\n\n" +
-                                   "Reoler er frigivet og lejeaftaler afsluttet.";
-
-                    MessageBox.Show(message, "Opsigelser behandlet", MessageBoxButton.OK, MessageBoxImage.Information);
-                    StatusMessage = result.Message;
-                    LoadTerminationData();
-                }
-                else
-                {
-                    MessageBox.Show(result.ErrorMessage, "Fejl", MessageBoxButton.OK, MessageBoxImage.Error);
-                }
+                MessageBox.Show("Ingen opsigelser at behandle", "Info", MessageBoxButton.OK, MessageBoxImage.Information);
             }
         }
 
-        /// <summary>
-        /// Genindlæser alle data
-        /// </summary>
         private void RefreshData(object parameter)
         {
             LoadTerminationData();
             if (SelectedCustomer != null)
-            {
                 LoadCustomerTerminations();
-            }
             StatusMessage = "Data genindlæst";
         }
 
-        /// <summary>
-        /// Rydder valgte kunde og formular
-        /// </summary>
         private void ClearSelection(object parameter)
         {
             SelectedCustomer = null;
-            CustomerPhone = "";
+            CustomerPhone = string.Empty;
             SelectedRackNumber = 0;
-            TerminationReason = "";
+            TerminationReason = string.Empty;
             UseCustomDate = false;
             StatusMessage = "Find kunde for at registrere opsigelse";
-        }
-
-        // INotifyPropertyChanged implementation
-        public event PropertyChangedEventHandler PropertyChanged;
-
-        protected virtual void OnPropertyChanged(string propertyName)
-        {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
     }
 }
