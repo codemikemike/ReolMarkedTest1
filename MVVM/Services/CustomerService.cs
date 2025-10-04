@@ -104,5 +104,31 @@ namespace ReolMarked.MVVM.Services
         {
             return _customerRepository.GetById(customerId);
         }
+
+        public void TestDatabaseConnection()
+        {
+            try
+            {
+                // Hent alle kunder fra databasen
+                var customers = GetAllCustomers();
+
+                // Vis antal kunder
+                var customerList = customers.ToList();
+                System.Windows.MessageBox.Show(
+                    $"Fundet {customerList.Count} kunder i databasen:\n" +
+                    string.Join("\n", customerList.Select(c => $"- {c.Name} ({c.Phone})")),
+                    "Database Test",
+                    System.Windows.MessageBoxButton.OK,
+                    System.Windows.MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                System.Windows.MessageBox.Show(
+                    $"Fejl ved læsning fra database: {ex.Message}",
+                    "Database Fejl",
+                    System.Windows.MessageBoxButton.OK,
+                    System.Windows.MessageBoxImage.Error);
+            }
+        }
     }
 }

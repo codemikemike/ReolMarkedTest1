@@ -2,65 +2,74 @@
 using System.Collections.Generic;
 using System.Linq;
 using ReolMarked.MVVM.Models;
+using ReolMarked.MVVM.Repositories.Base;
 using ReolMarked.MVVM.Repositories.Interfaces;
 
 namespace ReolMarked.MVVM.Repositories
 {
-    public class SaleRepository : ISaleRepository
+    public class SaleRepository : BaseRepository, ISaleRepository
     {
-        private readonly List<Sale> _sales;
-        private int _nextId;
-
-        public SaleRepository()
-        {
-            _sales = new List<Sale>();
-            _nextId = 1;
-        }
-
         public Sale Add(Sale sale)
         {
-            sale.SaleId = _nextId++;
-            _sales.Add(sale);
+            const string sql = @"
+                INSERT INTO Sale (SaleDateTime, Total, PaymentMethod, AmountPaid, ChangeGiven, IsCompleted, Notes)
+                OUTPUT INSERTED.SaleId
+                VALUES (@SaleDateTime, @Total, @PaymentMethod, @AmountPaid, @ChangeGiven, @IsCompleted, @Notes)";
+
+            var id = ExecuteScalar<int>(sql, sale);
+            sale.SaleId = id;
             return sale;
         }
 
-        public Sale GetById(int id)
+        public Sale? GetById(int id)
         {
-            return _sales.FirstOrDefault(s => s.SaleId == id);
+            const string sql = "SELECT * FROM Sale WHERE SaleId = @id";
+            return QuerySingleOrDefault<Sale>(sql, new { id });
         }
 
         public IEnumerable<Sale> GetAll()
         {
-            return _sales.ToList();
+            const string sql = "SELECT * FROM Sale ORDER BY SaleDateTime DESC";
+            return Query<Sale>(sql);
         }
 
         public void Update(Sale sale)
         {
-            var existing = GetById(sale.SaleId);
-            if (existing != null)
-            {
-                var index = _sales.IndexOf(existing);
-                _sales[index] = sale;
-            }
+            const string sql = @"
+                UPDATE Sale 
+                SET SaleDateTime = @SaleDateTime,
+                    Total = @Total,
+                    PaymentMethod = @PaymentMethod,
+                    AmountPaid = @AmountPaid,
+                    ChangeGiven = @ChangeGiven,
+                    IsCompleted = @IsCompleted,
+                    Notes = @Notes
+                WHERE SaleId = @SaleId";
+
+            Execute(sql, sale);
         }
 
         public void Delete(int id)
         {
-            var sale = GetById(id);
-            if (sale != null)
-            {
-                _sales.Remove(sale);
-            }
+            const string sql = "DELETE FROM Sale WHERE SaleId = @id";
+            Execute(sql, new { id });
         }
 
         public IEnumerable<Sale> GetByDateRange(DateTime fromDate, DateTime toDate)
         {
-            return _sales.Where(s => s.SaleDateTime.Date >= fromDate.Date && s.SaleDateTime.Date <= toDate.Date).ToList();
+            const string sql = @"
+                SELECT * FROM Sale 
+                WHERE CAST(SaleDateTime AS DATE) >= @fromDate 
+                  AND CAST(SaleDateTime AS DATE) <= @toDate
+                ORDER BY SaleDateTime DESC";
+
+            return Query<Sale>(sql, new { fromDate = fromDate.Date, toDate = toDate.Date });
         }
 
         public IEnumerable<Sale> GetCompletedSales()
         {
-            return _sales.Where(s => s.IsCompleted).ToList();
+            const string sql = "SELECT * FROM Sale WHERE IsCompleted = 1 ORDER BY SaleDateTime DESC";
+            return Query<Sale>(sql);
         }
     }
 }

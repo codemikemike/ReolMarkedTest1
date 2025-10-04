@@ -2,76 +2,81 @@
 using System.Collections.Generic;
 using System.Linq;
 using ReolMarked.MVVM.Models;
+using ReolMarked.MVVM.Repositories.Base;
 using ReolMarked.MVVM.Repositories.Interfaces;
 
 namespace ReolMarked.MVVM.Repositories
 {
-    public class RentalAgreementRepository : IRentalAgreementRepository
+    public class RentalAgreementRepository : BaseRepository, IRentalAgreementRepository
     {
-        private readonly List<RentalAgreement> _agreements;
-        private int _nextId;
-
-        public RentalAgreementRepository()
-        {
-            _agreements = new List<RentalAgreement>();
-            _nextId = 1;
-        }
-
         public RentalAgreement Add(RentalAgreement agreement)
         {
-            agreement.AgreementId = _nextId++;
+            const string sql = @"
+                INSERT INTO RentalAgreement (CustomerId, RackId, StartDate, MonthlyRent, Status, CreatedAt, Notes)
+                OUTPUT INSERTED.AgreementId
+                VALUES (@CustomerId, @RackId, @StartDate, @MonthlyRent, @Status, @CreatedAt, @Notes)";
+
             agreement.CreatedAt = DateTime.Now;
-            _agreements.Add(agreement);
+            var id = ExecuteScalar<int>(sql, agreement);
+            agreement.AgreementId = id;
             return agreement;
         }
 
-        public RentalAgreement GetById(int id)
+        public RentalAgreement? GetById(int id)
         {
-            return _agreements.FirstOrDefault(a => a.AgreementId == id);
+            const string sql = "SELECT * FROM RentalAgreement WHERE AgreementId = @id";
+            return QuerySingleOrDefault<RentalAgreement>(sql, new { id });
         }
 
         public IEnumerable<RentalAgreement> GetAll()
         {
-            return _agreements.ToList();
+            const string sql = "SELECT * FROM RentalAgreement";
+            return Query<RentalAgreement>(sql);
         }
 
         public void Update(RentalAgreement agreement)
         {
-            var existing = GetById(agreement.AgreementId);
-            if (existing != null)
-            {
-                var index = _agreements.IndexOf(existing);
-                _agreements[index] = agreement;
-            }
+            const string sql = @"
+                UPDATE RentalAgreement 
+                SET CustomerId = @CustomerId,
+                    RackId = @RackId,
+                    StartDate = @StartDate,
+                    MonthlyRent = @MonthlyRent,
+                    Status = @Status,
+                    Notes = @Notes
+                WHERE AgreementId = @AgreementId";
+
+            Execute(sql, agreement);
         }
 
         public void Delete(int id)
         {
-            var agreement = GetById(id);
-            if (agreement != null)
-            {
-                _agreements.Remove(agreement);
-            }
+            const string sql = "DELETE FROM RentalAgreement WHERE AgreementId = @id";
+            Execute(sql, new { id });
         }
 
         public IEnumerable<RentalAgreement> GetByCustomerId(int customerId)
         {
-            return _agreements.Where(a => a.CustomerId == customerId).ToList();
+            const string sql = "SELECT * FROM RentalAgreement WHERE CustomerId = @customerId";
+            return Query<RentalAgreement>(sql, new { customerId });
         }
 
         public IEnumerable<RentalAgreement> GetByRackId(int rackId)
         {
-            return _agreements.Where(a => a.RackId == rackId).ToList();
+            const string sql = "SELECT * FROM RentalAgreement WHERE RackId = @rackId";
+            return Query<RentalAgreement>(sql, new { rackId });
         }
 
         public IEnumerable<RentalAgreement> GetByStatus(RentalStatus status)
         {
-            return _agreements.Where(a => a.Status == status).ToList();
+            const string sql = "SELECT * FROM RentalAgreement WHERE Status = @status";
+            return Query<RentalAgreement>(sql, new { status = (int)status });
         }
 
-        public RentalAgreement GetActiveAgreementForRack(int rackId)
+        public RentalAgreement? GetActiveAgreementForRack(int rackId)
         {
-            return _agreements.FirstOrDefault(a => a.RackId == rackId && a.Status == RentalStatus.Active);
+            const string sql = "SELECT * FROM RentalAgreement WHERE RackId = @rackId AND Status = 0";
+            return QuerySingleOrDefault<RentalAgreement>(sql, new { rackId });
         }
     }
 }

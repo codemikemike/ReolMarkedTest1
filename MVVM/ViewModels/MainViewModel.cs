@@ -1,5 +1,4 @@
 ﻿using ReolMarked.MVVM.Commands;
-using ReolMarked.MVVM.Data;
 using ReolMarked.MVVM.Infrastructure;
 using ReolMarked.MVVM.Repositories.Interfaces;
 using ReolMarked.MVVM.Services;
@@ -57,22 +56,15 @@ namespace ReolMarked.MVVM.ViewModels
             // Opret commands
             CreateCommands();
 
-            // Initialiser test data
-            LoadTestData();
-
-            // Debug: Tjek om data blev oprettet
-            var allRacks = _rackRepository.GetAll().ToList();
-            System.Diagnostics.Debug.WriteLine($"Total racks in repository: {allRacks.Count}");
-            System.Diagnostics.Debug.WriteLine($"Available racks: {allRacks.Count(r => r.IsAvailable)}");
-
-            // Load data EFTER test data er oprettet
-            LoadData();
+            // Load data fra database
+            LoadCustomersFromDatabase();
+            LoadRacksFromDatabase();
 
             // Debug: Tjek collections
             System.Diagnostics.Debug.WriteLine($"AvailableRacks in collection: {AvailableRacks.Count}");
             System.Diagnostics.Debug.WriteLine($"Customers in collection: {Customers.Count}");
 
-            StatusMessage = "Klar til reol administration";
+            StatusMessage = "Klar til reol administration - Database tilsluttet";
         }
 
         // Properties
@@ -239,29 +231,52 @@ namespace ReolMarked.MVVM.ViewModels
             OpenTerminationWindowCommand = new RelayCommand(_ => _windowService.ShowTerminationWindow());
         }
 
-        private void LoadTestData()
+        private void LoadCustomersFromDatabase()
         {
-            TestDataInitializer.InitializeTestData();
+            try
+            {
+                // Hent kunder fra databasen
+                var customersFromDb = _customerService.GetAllCustomers();
 
-            // Debug output for at verificere data er loaded
-            System.Diagnostics.Debug.WriteLine(TestDataInitializer.GetTestDataSummary());
+                // Clear og genindlæs
+                Customers.Clear();
+                foreach (var customer in customersFromDb)
+                {
+                    Customers.Add(new CustomerViewModel(customer));
+                }
+
+                StatusMessage = $"Loaded {Customers.Count} kunder fra databasen";
+
+                // Debug output
+                System.Diagnostics.Debug.WriteLine($"Database customers loaded: {Customers.Count}");
+                foreach (var customer in Customers.Take(3))
+                {
+                    System.Diagnostics.Debug.WriteLine($"- {customer.Name} ({customer.Phone})");
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Fejl ved indlæsning fra database: {ex.Message}",
+                               "Database Fejl", MessageBoxButton.OK, MessageBoxImage.Error);
+                StatusMessage = "Fejl ved database indlæsning";
+            }
         }
 
-        private void LoadData()
+        private void LoadRacksFromDatabase()
         {
-            // Hent ledige reoler
-            var racks = _rackRepository.GetAll().Where(r => r.IsAvailable);
-            AvailableRacks = new ObservableCollection<RackViewModel>(
-                racks.Select(r => new RackViewModel(r)));
+            try
+            {
+                // Hent reoler fra databasen
+                var racks = _rackRepository.GetAll().Where(r => r.IsAvailable);
+                AvailableRacks = new ObservableCollection<RackViewModel>(
+                    racks.Select(r => new RackViewModel(r)));
 
-            // Hent aktive kunder
-            var customers = _customerService.GetActiveCustomers();
-            Customers = new ObservableCollection<CustomerViewModel>(
-                customers.Select(c => new CustomerViewModel(c)));
-
-            // Debug output
-            System.Diagnostics.Debug.WriteLine($"Loaded {AvailableRacks.Count} available racks");
-            System.Diagnostics.Debug.WriteLine($"Loaded {Customers.Count} customers");
+                System.Diagnostics.Debug.WriteLine($"Loaded {AvailableRacks.Count} available racks from database");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error loading racks: {ex.Message}");
+            }
         }
 
         private void LoadCustomerRacks()
@@ -314,9 +329,8 @@ namespace ReolMarked.MVVM.ViewModels
                     NewCustomerEmail,
                     NewCustomerAddress);
 
-                var customers = _customerService.GetActiveCustomers();
-                Customers = new ObservableCollection<CustomerViewModel>(
-                    customers.Select(c => new CustomerViewModel(c)));
+                // Reload customers from database
+                LoadCustomersFromDatabase();
 
                 SelectedCustomer = Customers.FirstOrDefault(c => c.CustomerId == newCustomer.CustomerId);
                 ClearCustomerForm();
@@ -356,7 +370,7 @@ namespace ReolMarked.MVVM.ViewModels
 
                 if (agreement != null)
                 {
-                    LoadData();
+                    LoadRacksFromDatabase();
                     LoadCustomerRacks();
 
                     MessageBox.Show(

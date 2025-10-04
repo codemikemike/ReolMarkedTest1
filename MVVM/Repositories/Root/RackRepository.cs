@@ -1,68 +1,74 @@
-﻿// Repositories/RackRepository.cs
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using ReolMarked.MVVM.Models;
+using ReolMarked.MVVM.Repositories.Base;
 using ReolMarked.MVVM.Repositories.Interfaces;
 
 namespace ReolMarked.MVVM.Repositories
 {
-    public class RackRepository : IRackRepository
+    public class RackRepository : BaseRepository, IRackRepository
     {
-        private readonly List<Rack> _racks;
-
-        public RackRepository()
-        {
-            _racks = new List<Rack>();
-        }
-
         public Rack Add(Rack rack)
         {
-            _racks.Add(rack);
+            const string sql = @"
+                INSERT INTO Rack (RackNumber, HasHangerBar, AmountShelves, Location, IsAvailable, Description)
+                OUTPUT INSERTED.RackId
+                VALUES (@RackNumber, @HasHangerBar, @AmountShelves, @Location, @IsAvailable, @Description)";
+
+            var id = ExecuteScalar<int>(sql, rack);
+            rack.RackId = id;
             return rack;
         }
 
-        public Rack GetById(int id)
+        public Rack? GetById(int id)
         {
-            return _racks.FirstOrDefault(r => r.RackId == id);
+            const string sql = "SELECT * FROM Rack WHERE RackId = @id";
+            return QuerySingleOrDefault<Rack>(sql, new { id });
         }
 
         public IEnumerable<Rack> GetAll()
         {
-            return _racks.ToList();
+            const string sql = "SELECT * FROM Rack ORDER BY RackNumber";
+            return Query<Rack>(sql);
         }
 
         public void Update(Rack rack)
         {
-            var existing = GetById(rack.RackId);
-            if (existing != null)
-            {
-                var index = _racks.IndexOf(existing);
-                _racks[index] = rack;
-            }
+            const string sql = @"
+                UPDATE Rack 
+                SET RackNumber = @RackNumber,
+                    HasHangerBar = @HasHangerBar,
+                    AmountShelves = @AmountShelves,
+                    Location = @Location,
+                    IsAvailable = @IsAvailable,
+                    Description = @Description
+                WHERE RackId = @RackId";
+
+            Execute(sql, rack);
         }
 
         public void Delete(int id)
         {
-            var rack = GetById(id);
-            if (rack != null)
-            {
-                _racks.Remove(rack);
-            }
+            const string sql = "DELETE FROM Rack WHERE RackId = @id";
+            Execute(sql, new { id });
         }
 
-        public Rack GetByRackNumber(int rackNumber)
+        public Rack? GetByRackNumber(int rackNumber)
         {
-            return _racks.FirstOrDefault(r => r.RackNumber == rackNumber);
+            const string sql = "SELECT * FROM Rack WHERE RackNumber = @rackNumber";
+            return QuerySingleOrDefault<Rack>(sql, new { rackNumber });
         }
 
         public IEnumerable<Rack> GetByAvailability(bool isAvailable)
         {
-            return _racks.Where(r => r.IsAvailable == isAvailable).ToList();
+            const string sql = "SELECT * FROM Rack WHERE IsAvailable = @isAvailable ORDER BY RackNumber";
+            return Query<Rack>(sql, new { isAvailable });
         }
 
         public IEnumerable<Rack> GetByHangerBarStatus(bool hasHangerBar)
         {
-            return _racks.Where(r => r.HasHangerBar == hasHangerBar).ToList();
+            const string sql = "SELECT * FROM Rack WHERE HasHangerBar = @hasHangerBar ORDER BY RackNumber";
+            return Query<Rack>(sql, new { hasHangerBar });
         }
     }
 }
