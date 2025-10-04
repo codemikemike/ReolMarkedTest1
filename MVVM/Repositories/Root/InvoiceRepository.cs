@@ -2,71 +2,88 @@
 using System.Collections.Generic;
 using System.Linq;
 using ReolMarked.MVVM.Models;
+using ReolMarked.MVVM.Repositories.Base;
 using ReolMarked.MVVM.Repositories.Interfaces;
 
 namespace ReolMarked.MVVM.Repositories
 {
-    public class InvoiceRepository : IInvoiceRepository
+    public class InvoiceRepository : BaseRepository, IInvoiceRepository
     {
-        private readonly List<Invoice> _invoices;
-        private int _nextId;
-
-        public InvoiceRepository()
-        {
-            _invoices = new List<Invoice>();
-            _nextId = 1;
-        }
-
         public Invoice Add(Invoice invoice)
         {
-            invoice.InvoiceId = _nextId++;
+            const string sql = @"
+                INSERT INTO Invoice (CustomerId, PeriodStart, PeriodEnd, CreatedAt, IsCompleted, IsPaid, 
+                                   PaymentMethod, TotalSales, CommissionAmount, NextMonthRent, NetAmount, 
+                                   PaymentDate, InvoiceSentDate)
+                OUTPUT INSERTED.InvoiceId
+                VALUES (@CustomerId, @PeriodStart, @PeriodEnd, @CreatedAt, @IsCompleted, @IsPaid,
+                        @PaymentMethod, @TotalSales, @CommissionAmount, @NextMonthRent, @NetAmount,
+                        @PaymentDate, @InvoiceSentDate)";
+
             invoice.CreatedAt = DateTime.Now;
-            _invoices.Add(invoice);
+            var id = ExecuteScalar<int>(sql, invoice);
+            invoice.InvoiceId = id;
             return invoice;
         }
 
-        public Invoice GetById(int id)
+        public Invoice? GetById(int id)
         {
-            return _invoices.FirstOrDefault(f => f.InvoiceId == id);
+            const string sql = "SELECT * FROM Invoice WHERE InvoiceId = @id";
+            return QuerySingleOrDefault<Invoice>(sql, new { id });
         }
 
         public IEnumerable<Invoice> GetAll()
         {
-            return _invoices.ToList();
+            const string sql = "SELECT * FROM Invoice ORDER BY CreatedAt DESC";
+            return Query<Invoice>(sql);
         }
 
         public void Update(Invoice invoice)
         {
-            var existing = GetById(invoice.InvoiceId);
-            if (existing != null)
-            {
-                var index = _invoices.IndexOf(existing);
-                _invoices[index] = invoice;
-            }
+            const string sql = @"
+                UPDATE Invoice 
+                SET CustomerId = @CustomerId,
+                    PeriodStart = @PeriodStart,
+                    PeriodEnd = @PeriodEnd,
+                    IsCompleted = @IsCompleted,
+                    IsPaid = @IsPaid,
+                    PaymentMethod = @PaymentMethod,
+                    TotalSales = @TotalSales,
+                    CommissionAmount = @CommissionAmount,
+                    NextMonthRent = @NextMonthRent,
+                    NetAmount = @NetAmount,
+                    PaymentDate = @PaymentDate,
+                    InvoiceSentDate = @InvoiceSentDate
+                WHERE InvoiceId = @InvoiceId";
+
+            Execute(sql, invoice);
         }
 
         public void Delete(int id)
         {
-            var invoice = GetById(id);
-            if (invoice != null)
-            {
-                _invoices.Remove(invoice);
-            }
+            const string sql = "DELETE FROM Invoice WHERE InvoiceId = @id";
+            Execute(sql, new { id });
         }
 
         public IEnumerable<Invoice> GetByCustomerId(int customerId)
         {
-            return _invoices.Where(f => f.CustomerId == customerId).ToList();
+            const string sql = "SELECT * FROM Invoice WHERE CustomerId = @customerId ORDER BY CreatedAt DESC";
+            return Query<Invoice>(sql, new { customerId });
         }
 
         public IEnumerable<Invoice> GetByPeriod(int year, int month)
         {
-            return _invoices.Where(f => f.PeriodStart.Year == year && f.PeriodStart.Month == month).ToList();
+            const string sql = @"
+                SELECT * FROM Invoice 
+                WHERE YEAR(PeriodStart) = @year AND MONTH(PeriodStart) = @month
+                ORDER BY CreatedAt DESC";
+            return Query<Invoice>(sql, new { year, month });
         }
 
         public IEnumerable<Invoice> GetUnpaid()
         {
-            return _invoices.Where(f => !f.IsPaid && f.IsCompleted).ToList();
+            const string sql = "SELECT * FROM Invoice WHERE IsPaid = 0 AND IsCompleted = 1 ORDER BY CreatedAt";
+            return Query<Invoice>(sql);
         }
     }
 }

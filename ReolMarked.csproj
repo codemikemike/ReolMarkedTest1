@@ -19,7 +19,7 @@
 		<!-- Applikations info -->
 		<AssemblyTitle>Middelby ReolMarked</AssemblyTitle>
 		<Product>ReolMarked Administration System</Product>
-		<Description>WPF MVVM applikation til håndtering af reol udlejning</Description>
+		<Description>WPF MVVM applikation til h�ndtering af reol udlejning</Description>
 		<Company>Middelby ReolMarked</Company>
 
 		<!-- Applikation ikon (hvis vi har en) -->
@@ -31,12 +31,23 @@
 		<Folder Include="Images\" />
 	</ItemGroup>
 
-	<!-- Ingen ekstra pakker nødvendige for basic WPF MVVM -->
-	<!-- Hvis vi senere vil tilføje database support: -->
+	<ItemGroup>
+	  <PackageReference Include="Dapper" Version="2.1.66" />
+	  <PackageReference Include="Microsoft.Data.SqlClient" Version="6.1.1" />
+	  <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="9.0.9" />
+	</ItemGroup>
+
+	<!-- Ingen ekstra pakker n�dvendige for basic WPF MVVM -->
+	<!-- Hvis vi senere vil tilf�je database support: -->
 	<!--
   <ItemGroup>
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="8.0.0" />
   </ItemGroup>
   -->
 
+  <ItemGroup>
+    <None Update="appsettings.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
 </Project>

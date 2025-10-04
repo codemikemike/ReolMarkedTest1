@@ -1,0 +1,58 @@
+﻿classDiagram
+    class SaleLine {
+        int SaleLineId
+        int SaleId
+        int LabelId
+        int Quantity
+        decimal UnitPrice
+        decimal LineTotal
+        DateTime AddedAt
+        Sale Sale
+        Label Label
+    }
+    class Sale {
+        int SaleId
+        DateTime SaleDateTime
+        decimal Total
+        PaymentMethod PaymentMethod
+        decimal AmountPaid
+        decimal ChangeGiven
+        bool IsCompleted
+        string Notes
+        List~SaleLine~ SaleLines
+    }
+    class Label {
+        int LabelId
+        decimal ProductPrice
+        int RackId
+        string BarCode
+        DateTime? SoldDate
+        DateTime CreatedAt
+        bool IsVoid
+        Customer Customer
+        Rack Rack
+    }
+    class Customer {
+        int CustomerId
+        string Name
+        string Phone
+        string Email
+        string Address
+        DateTime CreatedAt
+        bool IsActive
+    }
+    class Rack {
+        int RackId
+        int RackNumber
+        bool HasHangerBar
+        int AmountShelves
+        string Location
+        bool IsAvailable
+        string Description
+    }
+
+    SaleLine --> Sale : Sale
+    SaleLine --> Label : Label
+    Sale --> SaleLine : SaleLines
+    Label --> Customer : Customer
+    Label --> Rack : Rack

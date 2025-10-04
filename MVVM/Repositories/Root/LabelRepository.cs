@@ -2,81 +2,87 @@
 using System.Collections.Generic;
 using System.Linq;
 using ReolMarked.MVVM.Models;
+using ReolMarked.MVVM.Repositories.Base;
 using ReolMarked.MVVM.Repositories.Interfaces;
 
 namespace ReolMarked.MVVM.Repositories
 {
-    public class LabelRepository : ILabelRepository
+    public class LabelRepository : BaseRepository, ILabelRepository
     {
-        private readonly List<Label> _labels;
-        private int _nextId;
-
-        public LabelRepository()
-        {
-            _labels = new List<Label>();
-            _nextId = 1;
-        }
-
         public Label Add(Label label)
         {
-            label.LabelId = _nextId++;
+            const string sql = @"
+                INSERT INTO Label (ProductPrice, RackId, BarCode, SoldDate, CreatedAt, IsVoid)
+                OUTPUT INSERTED.LabelId
+                VALUES (@ProductPrice, @RackId, @BarCode, @SoldDate, @CreatedAt, @IsVoid)";
+
             label.CreatedAt = DateTime.Now;
-            _labels.Add(label);
+            var id = ExecuteScalar<int>(sql, label);
+            label.LabelId = id;
             return label;
         }
 
-        public Label GetById(int id)
+        public Label? GetById(int id)
         {
-            return _labels.FirstOrDefault(l => l.LabelId == id);
+            const string sql = "SELECT * FROM Label WHERE LabelId = @id";
+            return QuerySingleOrDefault<Label>(sql, new { id });
         }
 
         public IEnumerable<Label> GetAll()
         {
-            return _labels.ToList();
+            const string sql = "SELECT * FROM Label";
+            return Query<Label>(sql);
         }
 
         public void Update(Label label)
         {
-            var existing = GetById(label.LabelId);
-            if (existing != null)
-            {
-                var index = _labels.IndexOf(existing);
-                _labels[index] = label;
-            }
+            const string sql = @"
+                UPDATE Label 
+                SET ProductPrice = @ProductPrice,
+                    RackId = @RackId,
+                    BarCode = @BarCode,
+                    SoldDate = @SoldDate,
+                    IsVoid = @IsVoid
+                WHERE LabelId = @LabelId";
+
+            Execute(sql, label);
         }
 
         public void Delete(int id)
         {
-            var label = GetById(id);
-            if (label != null)
-            {
-                _labels.Remove(label);
-            }
+            const string sql = "DELETE FROM Label WHERE LabelId = @id";
+            Execute(sql, new { id });
         }
 
-        public Label GetByBarcode(string barcode)
+        public Label? GetByBarcode(string barcode)
         {
-            return _labels.FirstOrDefault(l => l.BarCode == barcode);
+            const string sql = "SELECT * FROM Label WHERE BarCode = @barcode";
+            return QuerySingleOrDefault<Label>(sql, new { barcode });
         }
 
         public IEnumerable<Label> GetByRackId(int rackId)
         {
-            return _labels.Where(l => l.RackId == rackId).ToList();
+            const string sql = "SELECT * FROM Label WHERE RackId = @rackId";
+            return Query<Label>(sql, new { rackId });
         }
 
         public IEnumerable<Label> GetByCustomerId(int customerId)
         {
-            return _labels.Where(l => l.Customer != null && l.Customer.CustomerId == customerId).ToList();
+            // Labels har ikke direkte CustomerId i databasen
+            // Du skal joine med Rack og RentalAgreement hvis du vil have dette
+            return new List<Label>();
         }
 
         public IEnumerable<Label> GetActiveLabels()
         {
-            return _labels.Where(l => !l.IsVoid && !l.SoldDate.HasValue).ToList();
+            const string sql = "SELECT * FROM Label WHERE IsVoid = 0 AND SoldDate IS NULL";
+            return Query<Label>(sql);
         }
 
         public IEnumerable<Label> GetSoldLabels()
         {
-            return _labels.Where(l => l.SoldDate.HasValue).ToList();
+            const string sql = "SELECT * FROM Label WHERE SoldDate IS NOT NULL";
+            return Query<Label>(sql);
         }
     }
 }
